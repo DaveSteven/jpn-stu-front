@@ -330,7 +330,7 @@ export function WrongBookView({ level, items, onBack, onReview }) {
   );
 }
 
-export function LoginView({ users, onLogin, onRegister }) {
+export function LoginView({ onLogin, onRegister }) {
   const [mode, setMode] = useState("login");
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");

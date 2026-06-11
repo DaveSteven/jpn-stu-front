@@ -1,7 +1,9 @@
 export const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
 export const SESSION_TOKEN_KEY = "japanese-study-session-token";
 export const EXAM_CACHE_PREFIX = "japanese-study-exam-cache";
+export const USER_LEVEL_CACHE_PREFIX = "japanese-study-user-level";
 
+export const DEFAULT_LEVEL = "N5";
 export const LEVELS = ["N5", "N4", "N3", "N2", "N1"];
 export const SUBJECTS = [
   { id: "grammar", label: "文法" },
@@ -41,6 +43,22 @@ export function formatDate(value) {
 
 export function subjectLabel(subject) {
   return SUBJECTS.find((item) => item.id === subject)?.label || subject;
+}
+
+export function normalizeLevel(level) {
+  return LEVELS.includes(level) ? level : DEFAULT_LEVEL;
+}
+
+export function userLevelCacheKey(userId) {
+  return `${USER_LEVEL_CACHE_PREFIX}:${userId}`;
+}
+
+export function readUserLevelCache(userId) {
+  return normalizeLevel(localStorage.getItem(userLevelCacheKey(userId)));
+}
+
+export function writeUserLevelCache(userId, level) {
+  localStorage.setItem(userLevelCacheKey(userId), normalizeLevel(level));
 }
 
 export function normalizeJapaneseUiText(value) {

@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import {
+  DEFAULT_LEVEL,
   SESSION_TOKEN_KEY,
   api,
   clearExamCache,
@@ -9,9 +10,12 @@ import {
   mapExam,
   mapExamAttempt,
   mapWrong,
+  normalizeLevel,
   pct,
   readExamCache,
+  readUserLevelCache,
   writeExamCache,
+  writeUserLevelCache,
 } from "./lib/study";
 import {
   ExamListView,
@@ -50,10 +54,9 @@ function App() {
   const [books, setBooks] = useState([]);
   const [exams, setExams] = useState([]);
   const [examAttempts, setExamAttempts] = useState([]);
-  const [users, setUsers] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [authToken, setAuthToken] = useState(() => localStorage.getItem(SESSION_TOKEN_KEY));
-  const [level, setLevel] = useState("N3");
+  const [level, setLevel] = useState(DEFAULT_LEVEL);
   const [subject, setSubject] = useState("grammar");
   const [selectedBook, setSelectedBook] = useState(null);
   const [session, setSession] = useState(() => readStoredQuizSession());
@@ -81,11 +84,12 @@ function App() {
       setLoading(true);
       setError("");
       try {
-        const rows = await api("/api/users");
         const restoredUser = authToken ? await api("/api/me", {}, authToken) : null;
         if (!ignore) {
-          setUsers(rows);
           setCurrentUser(restoredUser);
+          if (restoredUser) {
+            setLevel(normalizeLevel(restoredUser.current_level || readUserLevelCache(restoredUser.id)));
+          }
         }
       } catch (err) {
         localStorage.removeItem(SESSION_TOKEN_KEY);
@@ -325,11 +329,32 @@ function App() {
     localStorage.setItem(SESSION_TOKEN_KEY, session.token);
     setAuthToken(session.token);
     setCurrentUser(session.user);
-    setUsers(await api("/api/users"));
+    setLevel(normalizeLevel(session.user?.current_level || readUserLevelCache(session.user?.id)));
     setSelectedBook(null);
     setSession(null);
     setExamSession(null);
     navigate("/");
+  }
+
+  async function chooseLevel(nextLevel) {
+    const normalized = normalizeLevel(nextLevel);
+    setLevel(normalized);
+    if (currentUser) {
+      writeUserLevelCache(currentUser.id, normalized);
+      setCurrentUser((user) => user ? { ...user, current_level: normalized } : user);
+    }
+    if (!authToken || !currentUser || currentUser.current_level === normalized) return;
+
+    try {
+      const updatedUser = await api("/api/me/level", {
+        method: "POST",
+        body: JSON.stringify({ current_level: normalized }),
+      }, authToken);
+      setCurrentUser(updatedUser);
+      writeUserLevelCache(updatedUser.id, updatedUser.current_level);
+    } catch (err) {
+      console.warn("Could not save current level to the API; using local cache.", err);
+    }
   }
 
   async function login(form) {
@@ -452,7 +477,7 @@ function App() {
   if (!authToken || !currentUser) {
     return (
       <Shell>
-        <LoginView users={users} onLogin={login} onRegister={register} />
+        <LoginView onLogin={login} onRegister={register} />
       </Shell>
     );
   }
@@ -481,7 +506,7 @@ function App() {
               wrongItems={wrongItems}
               bookStats={bookStats}
               currentUser={currentUser}
-              onLevel={setLevel}
+              onLevel={chooseLevel}
               onSubject={setSubject}
               onStart={startBook}
               onMixedTest={startMixedTest}
@@ -548,7 +573,7 @@ function App() {
               exams={exams}
               level={level}
               examAttempts={examAttempts}
-              onLevel={setLevel}
+              onLevel={chooseLevel}
               onBack={resetToLibrary}
               onStartExam={startExam}
               onReviewAttempt={reviewExamAttempt}
