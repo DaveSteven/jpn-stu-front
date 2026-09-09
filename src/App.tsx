@@ -31,6 +31,8 @@ import {
   WrongBookView,
 } from "./pages";
 
+import Listening from "./pages/Listening";
+
 const QUIZ_SESSION_KEY = "japanese-study-quiz-session";
 
 function readStoredQuizSession() {
@@ -525,6 +527,7 @@ function App() {
   return (
     <Shell>
       <Routes>
+        <Route path="/listening/:examId?/:questionId?" element={<Listening key={currentUser.id} userId={currentUser.id} token={authToken} />} />
         <Route
           path="/"
           element={(
@@ -542,6 +545,7 @@ function App() {
               onSubject={setSubject}
               onStart={startBook}
               onMixedTest={startMixedTest}
+              onOpenListening={() => navigate("/listening")}
               onOpenExamList={() => navigate("/exams")}
               onOpenVocabulary={() => navigate("/vocabulary")}
               onOpenWrongBook={() => navigate("/wrong")}

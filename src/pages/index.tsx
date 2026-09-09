@@ -57,6 +57,7 @@ export function LibraryView({
   onStart,
   onMixedTest,
   onOpenExamList,
+  onOpenListening,
   onOpenVocabulary,
   onOpenWrongBook,
   onOpenUser,
@@ -153,6 +154,7 @@ export function LibraryView({
         />
       </section>
 
+      <section className="exam-entry-card"><div><div className="eyebrow">Listening Studio</div><h2>听力训练</h2><p>按年份选卷 · 逐段精听 · 单段循环</p></div><button className="primary-button" onClick={onOpenListening}>开始听力训练</button></section>
       <section className="exam-entry-card">
         <div>
           <div className="section-title">
