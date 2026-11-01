@@ -28,6 +28,7 @@ import {
   buildReviewProblemGroups,
   calculateExamScore,
   examPartLabel,
+  examQuestionCategoryLabel,
   examPassMark,
   examQuestionDisplayNumber,
   formatDate,
@@ -1106,6 +1107,35 @@ function BilingualTranscript({
 function HtmlInline({ html }) {
   if (!html) return null;
   return <span dangerouslySetInnerHTML={{ __html: cleanHtml(html) }} />;
+}
+
+export function RandomPracticeSessionView({ session, onBack, onChoose, onMove, onSubmit }) {
+  const question = session.questions[session.index];
+  const chosenOptionId = session.answers[question.id] || null;
+  const isLast = session.index === session.questions.length - 1;
+
+  return (
+    <section className="random-practice-view">
+      <header className="quiz-header">
+        <button className="icon-button" onClick={onBack} type="button" aria-label="Back"><ArrowLeft size={22} /></button>
+        <div className="quiz-progress"><Progress value={pct(session.index + 1, session.questions.length)} /><span>{session.index + 1} / {session.questions.length}</span></div>
+      </header>
+      <article className="random-practice-question">
+        <div className="random-practice-meta"><span className="book-pill subject-reading">{session.exam.level} · {examQuestionCategoryLabel(question)}</span><small>{question.source_exam_title}</small></div>
+        <div className="random-practice-number">第 {question.practice_order || session.index + 1} 题</div>
+        {question.passage ? <section className="exam-passage"><HtmlContent html={question.passage} /></section> : null}
+        <div className="random-practice-title"><HtmlContent html={question.title} /></div>
+        {question.image_url ? <img className="exam-image" src={assetSrc(question.image_url)} alt="" /> : null}
+        <section className="options-grid exam-options">
+          {question.options.map((option, index) => <button key={option.id} className={`option-button ${chosenOptionId === option.id ? "selected" : ""}`} onClick={() => onChoose(question.id, option.id)} type="button"><span className="option-letter">{index + 1}</span><span><HtmlInline html={option.text} /></span><span /></button>)}
+        </section>
+      </article>
+      <footer className="exam-nav random-practice-nav">
+        <button className="secondary-button" disabled={session.index === 0} onClick={() => onMove(session.index - 1)} type="button">Previous</button>
+        {isLast ? <button className="primary-button" onClick={onSubmit} type="button">Submit</button> : <button className="primary-button" onClick={() => onMove(session.index + 1)} type="button">Next</button>}
+      </footer>
+    </section>
+  );
 }
 
 export function ExamSessionView({

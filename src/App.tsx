@@ -21,6 +21,7 @@ import {
   ExamListView,
   ExamResultView,
   ExamSessionView,
+  RandomPracticeSessionView,
   GrammarPracticeSetupView,
   LibraryView,
   LoginView,
@@ -221,6 +222,36 @@ function App() {
 
   async function startGrammarPractice(config) {
     setError("");
+    if (config.mode === "random") {
+      const rows = await api(`/api/exam-practice/random?level=${level}&types=${config.types.join(",")}&limit=${config.count}`, {}, authToken);
+      const category = PRACTICE_CATEGORIES[config.category] || PRACTICE_CATEGORIES.grammar;
+      const questions = rows.map((question) => ({
+        ...question,
+        source_exam_id: question.exam_id,
+        source_exam_title: question.exam_title,
+        layer_id: `practice-${question.id}`,
+        order_index: question.practice_order,
+      }));
+      setGrammarPractice({
+        config,
+        exam: {
+          id: 0,
+          level,
+          title: `${level} ${category.label}专项`,
+          layers: questions.map((question) => ({
+            id: question.layer_id,
+            order_index: question.practice_order,
+            title: `${category.label}专项 · 第${question.practice_order}题`,
+            question_type: question.question_type,
+          })),
+        },
+        questions,
+        index: 0,
+        answers: {},
+        finishedAttempt: null,
+      });
+      return;
+    }
     const selectedExams = config.mode === "exam"
         ? exams.filter((exam) => exam.id === Number(config.examId))
         : exams;
@@ -659,13 +690,23 @@ function App() {
                 onLibrary={resetToLibrary}
               />
             ) : grammarPractice ? (
-              <ExamSessionView
-                session={grammarPractice}
-                onBack={() => setGrammarPractice(null)}
-                onChoose={chooseGrammarOption}
-                onMove={moveGrammarQuestion}
-                onSubmit={submitGrammarPractice}
-              />
+              grammarPractice.config.mode === "random" ? (
+                <RandomPracticeSessionView
+                  session={grammarPractice}
+                  onBack={() => setGrammarPractice(null)}
+                  onChoose={chooseGrammarOption}
+                  onMove={moveGrammarQuestion}
+                  onSubmit={submitGrammarPractice}
+                />
+              ) : (
+                <ExamSessionView
+                  session={grammarPractice}
+                  onBack={() => setGrammarPractice(null)}
+                  onChoose={chooseGrammarOption}
+                  onMove={moveGrammarQuestion}
+                  onSubmit={submitGrammarPractice}
+                />
+              )
             ) : (
               <GrammarPracticeSetupView
                 exams={exams}
