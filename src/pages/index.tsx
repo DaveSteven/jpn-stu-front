@@ -1,17 +1,22 @@
 import React, { useMemo, useState } from "react";
 import {
   ArrowLeft,
+  ArrowRight,
   BarChart3,
+  BrainCircuit,
   BookOpen,
   Check,
   ChevronRight,
   ClipboardList,
   FileText,
   History,
+  Headphones,
   Languages,
+  Layers3,
   NotebookPen,
   RotateCcw,
   Search,
+  Target,
   Trophy,
   X,
 } from "lucide-react";
@@ -56,6 +61,9 @@ export function LibraryView({
   onSubject,
   onStart,
   onMixedTest,
+  onOpenGrammarPractice,
+  onOpenVocabularyPractice,
+  onOpenReadingPractice,
   onOpenExamList,
   onOpenListening,
   onOpenVocabulary,
@@ -122,104 +130,62 @@ export function LibraryView({
         </div>
       </header>
 
-      <section
-        className="subject-tabs"
-        role="tablist"
-        aria-label="Question subject"
-      >
-        {SUBJECTS.map((item) => (
-          <button
-            key={item.id}
-            className={subject === item.id ? "active" : ""}
-            onClick={() => onSubject(item.id)}
-            type="button"
-          >
-            {item.label}
-          </button>
-        ))}
-      </section>
-
-      <section className="stats-strip" aria-label="study stats">
-        <Metric icon={<BookOpen />} label="Books" value={books.length} />
-        <Metric icon={<FileText />} label="Exams" value={exams.length} />
-        <Metric
-          icon={<History />}
-          label="Attempts"
-          value={currentAttempts.length}
-        />
-        <Metric
-          icon={<Trophy />}
-          label="Accuracy"
-          value={`${pct(totalCorrect, totalQuestions)}%`}
-        />
-      </section>
-
-      <section className="exam-entry-card"><div><div className="eyebrow">Listening Studio</div><h2>听力训练</h2><p>按年份选卷 · 逐段精听 · 单段循环</p></div><button className="primary-button" onClick={onOpenListening}>开始听力训练</button></section>
-      <section className="exam-entry-card">
-        <div>
-          <div className="section-title">
-            <ClipboardList size={22} />
-            <h2>模擬試験</h2>
-          </div>
-          <p>
-            {exams.length
-              ? `${level} 過去問 ${exams.length} 回分`
-              : `${level} の試験データはまだありません`}
-            {latestExamAttempt
-              ? ` · 直近 ${pct(latestExamAttempt.correct, latestExamAttempt.total)}%`
-              : ""}
-          </p>
-        </div>
-        <button
-          className="primary-button"
-          onClick={onOpenExamList}
-          type="button"
-        >
-          試験ライブラリへ
-          <ChevronRight size={20} />
-        </button>
-      </section>
-
-      <section className="vocabulary-entry-card">
-        <div>
-          <div className="section-title compact">
-            <Languages size={22} />
-            <h2>高頻単語</h2>
-          </div>
-          <p>名詞・動詞・副詞をカードで覚える</p>
-        </div>
-        <button
-          className="primary-button vocabulary-open-button"
-          onClick={onOpenVocabulary}
-          type="button"
-        >
-          単語帳を開く
-          <ChevronRight size={20} />
-        </button>
-      </section>
-
       {questionPool ? (
-        <section className="mixed-test-card">
+        <section className="home-continue-card">
           <div>
-            <div className={`book-badge subject-${subject}`}>
-              {level} {currentSubjectLabel}
-            </div>
-            <h2>総合テスト</h2>
-            <p>
-              現在のカテゴリから20問をランダムに出題します。問題と解答の順序は毎回再生成されます。
-            </p>
+            <div className="eyebrow">今日のおすすめ</div>
+            <h2>{level} {currentSubjectLabel} ランダム練習</h2>
+            <p>現在のカテゴリから20問。問題と選択肢は毎回シャッフルされます。</p>
           </div>
-          <button
-            className="primary-button"
-            onClick={onMixedTest}
-            type="button"
-          >
-            Start 20
+          <button className="primary-button" onClick={onMixedTest} type="button">
+            20問を始める <ArrowRight size={19} />
           </button>
         </section>
       ) : null}
 
-      <section className="book-grid">
+      <section className="home-section">
+        <div className="home-section-heading">
+          <div><h2>开始练习</h2><p>选择专项训练，或进行完整模拟考试</p></div>
+        </div>
+        <div className="home-module-grid">
+          <article className="home-training-module featured">
+            <div className="home-module-heading"><div><Target size={25} /><span><strong>专项练习</strong><small>针对不同能力单独强化</small></span></div><em>推荐</em></div>
+            <div className="home-module-actions">
+              <button onClick={onOpenVocabularyPractice} disabled={!exams.length} type="button"><Languages size={22} /><span><strong>文字词汇专项</strong><small>读音、词义和用法强化</small></span><ChevronRight size={19} /></button>
+              <button onClick={onOpenGrammarPractice} disabled={!exams.length} type="button"><BrainCircuit size={22} /><span><strong>文法专项</strong><small>按题型、试卷和题量组题</small></span><ChevronRight size={19} /></button>
+              <button onClick={onOpenReadingPractice} disabled={!exams.length} type="button"><BookOpen size={22} /><span><strong>读解专项</strong><small>短篇、长篇和信息检索</small></span><ChevronRight size={19} /></button>
+              <button onClick={onOpenListening} type="button"><Headphones size={22} /><span><strong>听力专项</strong><small>按试卷逐题精听与循环</small></span><ChevronRight size={19} /></button>
+            </div>
+          </article>
+          <article className="home-training-module exam-module">
+            <div className="home-module-heading"><div><ClipboardList size={25} /><span><strong>模拟考试</strong><small>按照正式考试结构完成整套试卷</small></span></div></div>
+            <div className="home-exam-summary"><strong>{exams.length}</strong><span>{level} 历年试卷</span>{latestExamAttempt ? <small>最近成绩 {pct(latestExamAttempt.correct, latestExamAttempt.total)}%</small> : <small>尚未参加考试</small>}</div>
+            <button className="primary-button" onClick={onOpenExamList} type="button">选择模拟试卷 <ArrowRight size={19} /></button>
+          </article>
+        </div>
+      </section>
+
+      <section className="home-section">
+        <div className="home-section-heading">
+          <div><h2>基础题库</h2><p>选择知识领域后，按课练习</p></div>
+        </div>
+        <div className="subject-library-tabs" role="tablist" aria-label="Question subject">
+          {SUBJECTS.map((item, index) => {
+            const Icon = [BrainCircuit, BookOpen, Layers3][index];
+            return (
+              <button key={item.id} className={subject === item.id ? `active subject-${item.id}` : ""} onClick={() => onSubject(item.id)} type="button">
+                <Icon size={21} /><strong>{item.label}</strong>{subject === item.id ? <span>{questionPool}题</span> : null}
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <div className="home-library-heading">
+        <div><span className={`book-badge subject-${subject}`}>{level} {currentSubjectLabel}</span><h2>课程练习</h2></div>
+        <span>{books.length} 册 · {questionPool} 题</span>
+      </div>
+      <section className="book-grid home-book-grid">
         {books.length ? (
           books.map((book) => {
             const stats = bookStats.get(book.id);
@@ -257,6 +223,14 @@ export function LibraryView({
             <span>このカテゴリの問題はまだありません。</span>
           </div>
         )}
+      </section>
+
+      <section className="home-review-grid">
+        <div className="home-study-summary">
+          <small>当前分类</small><strong>{pct(totalCorrect, totalQuestions)}%</strong><span>{currentAttempts.length} 次练习</span>
+        </div>
+        <button onClick={onOpenWrongBook} type="button"><RotateCcw size={22} /><span><strong>错题复习</strong><small>{wrongItems.length ? `${wrongItems.length} 题待复习` : "暂无错题"}</small></span><ChevronRight size={20} /></button>
+        <button onClick={onOpenUser} type="button"><History size={22} /><span><strong>学习记录</strong><small>查看成绩与练习历史</small></span><ChevronRight size={20} /></button>
       </section>
     </>
   );
@@ -349,6 +323,109 @@ export function ExamListView({
           <span>このレベルの試験データはまだありません。</span>
         </div>
       )}
+    </section>
+  );
+}
+
+export const PRACTICE_CATEGORIES = {
+  vocabulary: {
+    label: "文字词汇",
+    eyebrow: "Vocabulary Practice",
+    types: [
+      { id: 11, label: "汉字读音", description: "选择汉字的正确读音" },
+      { id: 12, label: "汉字书写", description: "选择假名对应的正确汉字" },
+      { id: 13, label: "词语构成", description: "选择符合构词规则的表达" },
+      { id: 14, label: "语境填空", description: "根据句子语境选择词语" },
+      { id: 15, label: "近义替换", description: "选择意义最接近的表达" },
+      { id: 16, label: "词语用法", description: "判断词语使用正确的句子" },
+    ],
+  },
+  grammar: {
+    label: "文法",
+    eyebrow: "Grammar Practice",
+    types: [
+      { id: 21, label: "文法填空", description: "选择最适合句中空格的表达" },
+      { id: 22, label: "句子排序", description: "判断 ★ 位置应放入的内容" },
+      { id: 23, label: "文章填空", description: "结合整篇文章选择合适表达" },
+    ],
+  },
+  reading: {
+    label: "读解",
+    eyebrow: "Reading Practice",
+    types: [
+      { id: 31, label: "短篇理解", description: "阅读短文并回答问题" },
+      { id: 32, label: "中篇理解", description: "理解文章结构和主要内容" },
+      { id: 33, label: "对比阅读", description: "比较两篇文章或不同观点" },
+      { id: 34, label: "综合理解", description: "综合分析文章内容" },
+      { id: 35, label: "长篇理解", description: "阅读长文并理解作者意图" },
+      { id: 36, label: "信息检索", description: "从通知和资料中查找信息" },
+    ],
+  },
+};
+
+export function GrammarPracticeSetupView({ exams, level, category = "grammar", onBack, onStart }) {
+  const practiceCategory = PRACTICE_CATEGORIES[category] || PRACTICE_CATEGORIES.grammar;
+  const [mode, setMode] = useState("random");
+  const [examId, setExamId] = useState(exams[0]?.id ? String(exams[0].id) : "");
+  const [types, setTypes] = useState(practiceCategory.types.map((type) => type.id));
+  const [count, setCount] = useState(20);
+  const [starting, setStarting] = useState(false);
+  const [message, setMessage] = useState("");
+
+  function toggleType(type) {
+    setTypes((current) => current.includes(type)
+      ? current.filter((item) => item !== type)
+      : [...current, type]);
+  }
+
+  async function submit(event) {
+    event.preventDefault();
+    if (!types.length || (mode === "exam" && !examId)) return;
+    setStarting(true);
+    setMessage("");
+    try {
+      await onStart({ mode, examId, types, category, count: Math.max(1, Math.min(100, Number(count) || 20)) });
+    } catch (error) {
+      setMessage(error.message || "专项题目加载失败，请稍后重试");
+    } finally {
+      setStarting(false);
+    }
+  }
+
+  return (
+    <section className="grammar-practice-setup">
+      <header className="quiz-header">
+        <button className="icon-button" onClick={onBack} type="button" aria-label="Back"><ArrowLeft size={22} /></button>
+        <div className="grammar-practice-title"><div className="eyebrow">{practiceCategory.eyebrow}</div><h1>{level} {practiceCategory.label}专项</h1><p>按需要组合题型、来源和练习数量</p></div>
+      </header>
+
+      <form onSubmit={submit}>
+        <section className="practice-config-section">
+          <div className="practice-config-heading"><span>1</span><div><h2>选择题目来源</h2><p>可以指定一张试卷，也可以跨试卷随机抽题</p></div></div>
+          <div className="practice-source-grid">
+            <label className={mode === "random" ? "selected" : ""}><input type="radio" name="source" checked={mode === "random"} onChange={() => setMode("random")} /><Target size={23} /><span><strong>全部试卷随机</strong><small>从 {level} 历年试卷中打乱抽取</small></span></label>
+            <label className={mode === "exam" ? "selected" : ""}><input type="radio" name="source" checked={mode === "exam"} onChange={() => setMode("exam")} /><ClipboardList size={23} /><span><strong>指定试卷</strong><small>只练习一张试卷中的{practiceCategory.label}题</small></span></label>
+          </div>
+          {mode === "exam" ? <select className="practice-exam-select" value={examId} onChange={(event) => setExamId(event.target.value)}>{exams.map((exam) => <option key={exam.id} value={exam.id}>{exam.title}</option>)}</select> : null}
+        </section>
+
+        <section className="practice-config-section">
+          <div className="practice-config-heading"><span>2</span><div><h2>选择{practiceCategory.label}题型</h2><p>可同时选择多种题型</p></div></div>
+          <div className="practice-type-grid">
+            {practiceCategory.types.map((item) => <label className={types.includes(item.id) ? "selected" : ""} key={item.id}><input type="checkbox" checked={types.includes(item.id)} onChange={() => toggleType(item.id)} /><Check size={20} /><span><strong>{item.label}</strong><small>{item.description}</small></span></label>)}
+          </div>
+        </section>
+
+        {mode === "random" ? (
+          <section className="practice-config-section practice-count-section">
+            <div className="practice-config-heading"><span>3</span><div><h2>设置题目数量</h2><p>实际题量不会超过所选范围内的可用题目</p></div></div>
+            <div className="practice-count-options">{[5, 10, 20, 30].map((value) => <button className={count === value ? "selected" : ""} onClick={() => setCount(value)} type="button" key={value}>{value}题</button>)}<label><input type="number" min="1" max="100" value={count} onChange={(event) => setCount(Number(event.target.value))} /><span>题</span></label></div>
+          </section>
+        ) : null}
+
+        {message ? <p className="form-error" role="alert">{message}</p> : null}
+        <div className="practice-start-bar"><div><strong>{types.length} 种题型 · {mode === "random" ? `${count || 0} 题` : "全部匹配题目"}</strong><span>{mode === "random" ? `${level} 全部试卷随机` : exams.find((exam) => String(exam.id) === examId)?.title}</span></div><button className="primary-button" disabled={!types.length || !exams.length || starting} type="submit">{starting ? "正在组题…" : "开始专项练习"} {!starting ? <ArrowRight size={19} /> : null}</button></div>
+      </form>
     </section>
   );
 }
@@ -1307,6 +1384,8 @@ export function ExamResultView({
   questions,
   onRepeat,
   onLibrary,
+  practice = false,
+  practiceCategory = "grammar",
 }) {
   const score = pct(attempt.correct, attempt.total);
   const estimatedScore = calculateExamScore(attempt, questions);
@@ -1329,6 +1408,12 @@ export function ExamResultView({
       unanswered: true,
     };
   const reviewProblemGroups = buildReviewProblemGroups(exam, questions);
+  const practiceTypes = (PRACTICE_CATEGORIES[practiceCategory] || PRACTICE_CATEGORIES.grammar).types;
+  const grammarTypeStats = practiceTypes.map((type) => {
+    const typeQuestions = questions.filter((question) => question.question_type === type.id);
+    const correct = typeQuestions.filter((question) => answerByQuestion.get(question.id)?.isCorrect).length;
+    return { ...type, correct, total: typeQuestions.length };
+  }).filter((type) => type.total);
 
   return (
     <section className="result-view exam-result-view">
@@ -1340,7 +1425,11 @@ export function ExamResultView({
         </p>
       </div>
 
-      <section
+      {practice ? (
+        <section className="grammar-type-summary">
+          {grammarTypeStats.map((type) => <div key={type.id}><span>{type.label}</span><strong>{pct(type.correct, type.total)}%</strong><small>{type.correct} / {type.total} 正确</small></div>)}
+        </section>
+      ) : <section
         className={`exam-score-summary ${estimatedScore.passed ? "passed" : "failed"}`}
       >
         <div>
@@ -1368,15 +1457,15 @@ export function ExamResultView({
             目安 {estimatedScore.listeningPassMark}
           </small>
         </div>
-      </section>
+      </section>}
 
       <div className="result-actions">
         <button className="primary-button" onClick={onRepeat} type="button">
           <RotateCcw size={20} />
-          Repeat
+          {practice ? "重新设置" : "Repeat"}
         </button>
         <button className="secondary-button" onClick={onLibrary} type="button">
-          Exam list
+          {practice ? "返回首页" : "Exam list"}
         </button>
       </div>
 

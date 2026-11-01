@@ -21,6 +21,7 @@ import {
   ExamListView,
   ExamResultView,
   ExamSessionView,
+  GrammarPracticeSetupView,
   LibraryView,
   LoginView,
   QuizView,
@@ -29,6 +30,7 @@ import {
   UserView,
   VocabularyView,
   WrongBookView,
+  PRACTICE_CATEGORIES,
 } from "./pages";
 
 import Listening from "./pages/Listening";
@@ -64,6 +66,7 @@ function App() {
   const [selectedBook, setSelectedBook] = useState(null);
   const [session, setSession] = useState(() => readStoredQuizSession());
   const [examSession, setExamSession] = useState(null);
+  const [grammarPractice, setGrammarPractice] = useState(null);
   const [attempts, setAttempts] = useState([]);
   const [wrongItems, setWrongItems] = useState([]);
   const [vocabulary, setVocabulary] = useState([]);
@@ -214,6 +217,91 @@ function App() {
       categoryLabel: `${level} ${quiz.subject_label}`,
     };
     startSession(source, quiz, "mixed");
+  }
+
+  async function startGrammarPractice(config) {
+    setError("");
+    const selectedExams = config.mode === "exam"
+        ? exams.filter((exam) => exam.id === Number(config.examId))
+        : exams;
+      const loaded = await Promise.all(selectedExams.map(async (exam) => {
+        const [detail, questions] = await Promise.all([
+          api(`/api/exams/${exam.id}`, {}, authToken),
+          api(`/api/exams/${exam.id}/questions`, {}, authToken),
+        ]);
+        return { exam, detail, questions };
+      }));
+      const allowedTypes = new Set(config.types.map(Number));
+      const pool = loaded.flatMap(({ exam, questions }) => questions
+        .filter((question) => allowedTypes.has(question.question_type))
+        .map((question) => ({ ...question, source_exam_id: exam.id, source_exam_title: exam.title })));
+      if (!pool.length) throw new Error("所选条件下没有可用的专项题目");
+      const questions = config.mode === "random"
+        ? [...pool].sort(() => Math.random() - 0.5).slice(0, Math.min(config.count, pool.length))
+        : pool;
+      const layerIds = new Set(questions.map((question) => question.layer_id));
+      const layers = loaded.flatMap(({ detail }) => detail.layers || [])
+        .filter((layer) => layerIds.has(layer.id));
+      setGrammarPractice({
+        config,
+        exam: {
+          id: 0,
+          level,
+          title: `${level} ${(PRACTICE_CATEGORIES[config.category] || PRACTICE_CATEGORIES.grammar).label}专项`,
+          layers: layers.map((layer, index) => ({ ...layer, order_index: index + 1 })),
+        },
+        questions,
+        index: 0,
+        answers: {},
+        finishedAttempt: null,
+      });
+  }
+
+  function chooseGrammarOption(questionId, optionId) {
+    setGrammarPractice((current) => ({
+      ...current,
+      answers: { ...current.answers, [questionId]: optionId },
+    }));
+  }
+
+  function moveGrammarQuestion(index) {
+    setGrammarPractice((current) => ({
+      ...current,
+      index: Math.max(0, Math.min(current.questions.length - 1, index)),
+    }));
+  }
+
+  async function submitGrammarPractice() {
+    const groups = new Map();
+    for (const question of grammarPractice.questions) {
+      if (!groups.has(question.source_exam_id)) groups.set(question.source_exam_id, []);
+      groups.get(question.source_exam_id).push(question);
+    }
+    const savedAttempts = await Promise.all([...groups.entries()].map(([examId, questions]) =>
+      api("/api/exam-attempts", {
+        method: "POST",
+        body: JSON.stringify({
+          exam_id: examId,
+          answers: questions.map((question) => ({
+            question_id: question.id,
+            chosen_option_id: grammarPractice.answers[question.id] || null,
+          })),
+        }),
+      }, authToken).then(mapExamAttempt),
+    ));
+    const answers = savedAttempts.flatMap((attempt) => attempt.answers);
+    setGrammarPractice((current) => ({
+      ...current,
+      finishedAttempt: {
+        id: `grammar-${Date.now()}`,
+        level,
+        title: `${level} ${(PRACTICE_CATEGORIES[grammarPractice.config.category] || PRACTICE_CATEGORIES.grammar).label}专项练习`,
+        correct: answers.filter((answer) => answer.isCorrect).length,
+        total: answers.length,
+        answers,
+      },
+    }));
+    await refreshStudyData(level, authToken);
   }
 
   async function startWrongReview() {
@@ -527,7 +615,7 @@ function App() {
   return (
     <Shell>
       <Routes>
-        <Route path="/listening/:examId?/:questionId?" element={<Listening key={currentUser.id} userId={currentUser.id} token={authToken} />} />
+        <Route path="/listening/:examId?/:questionId?" element={<Listening key={currentUser.id} userId={currentUser.id} token={authToken} globalLevel={level} />} />
         <Route
           path="/"
           element={(
@@ -545,6 +633,9 @@ function App() {
               onSubject={setSubject}
               onStart={startBook}
               onMixedTest={startMixedTest}
+              onOpenGrammarPractice={() => { setGrammarPractice(null); navigate("/grammar-practice"); }}
+              onOpenVocabularyPractice={() => { setGrammarPractice(null); navigate("/vocabulary-practice"); }}
+              onOpenReadingPractice={() => { setGrammarPractice(null); navigate("/reading-practice"); }}
               onOpenListening={() => navigate("/listening")}
               onOpenExamList={() => navigate("/exams")}
               onOpenVocabulary={() => navigate("/vocabulary")}
@@ -553,6 +644,39 @@ function App() {
             />
           )}
         />
+        {Object.keys(PRACTICE_CATEGORIES).map((category) => (
+          <Route
+            key={category}
+            path={`/${category}-practice`}
+            element={grammarPractice?.finishedAttempt ? (
+              <ExamResultView
+                exam={grammarPractice.exam}
+                attempt={grammarPractice.finishedAttempt}
+                questions={grammarPractice.questions}
+                practice
+                practiceCategory={grammarPractice.config.category}
+                onRepeat={() => setGrammarPractice(null)}
+                onLibrary={resetToLibrary}
+              />
+            ) : grammarPractice ? (
+              <ExamSessionView
+                session={grammarPractice}
+                onBack={() => setGrammarPractice(null)}
+                onChoose={chooseGrammarOption}
+                onMove={moveGrammarQuestion}
+                onSubmit={submitGrammarPractice}
+              />
+            ) : (
+              <GrammarPracticeSetupView
+                exams={exams}
+                level={level}
+                category={category}
+                onBack={resetToLibrary}
+                onStart={startGrammarPractice}
+              />
+            )}
+          />
+        ))}
         <Route
           path="/vocabulary"
           element={(

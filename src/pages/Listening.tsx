@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Play, Pause, Volume2, VolumeX, Eye, EyeOff, CheckCircle2, CircleAlert, RotateCcw } from "lucide-react";
+import { ArrowLeft, Play, Pause, Volume2, VolumeX, Eye, EyeOff, CheckCircle2, CircleAlert, RotateCcw, ClipboardList } from "lucide-react";
 import { api, assetSrc } from "../lib/study";
 
 function plain(html = "") { return new DOMParser().parseFromString(html, "text/html").body.textContent?.replace(/<MOJiTest_URL>/g, "").trim() || ""; }
@@ -18,13 +18,21 @@ export function segments(html: string) {
   return Array.from(new DOMParser().parseFromString(html || "", "text/html").querySelectorAll('[data-starttime][data-endtime]')).map(el => ({ start: time(el.getAttribute('data-starttime')), end: time(el.getAttribute('data-endtime')), text: el.textContent?.trim() || "" })).filter(s => Number.isFinite(s.start) && s.end > s.start);
 }
 function read(key) { try { const v = JSON.parse(localStorage.getItem(key) || '{}'); return v && typeof v === 'object' && !Array.isArray(v) ? v : {}; } catch { return {}; } }
+const LISTENING_TYPES = [
+  { id: 41, label: '课题理解', description: '听懂任务并选择接下来应做的事情' },
+  { id: 42, label: '要点理解', description: '抓住问题要求的关键信息' },
+  { id: 43, label: '概要理解', description: '理解对话或讲话的整体主旨' },
+  { id: 44, label: '表达选择', description: '根据场景选择合适的表达' },
+  { id: 45, label: '即时应答', description: '选择最自然的即时回应' },
+  { id: 46, label: '综合理解', description: '综合多段信息进行判断' },
+];
 
-export default function Listening({ userId, token }) {
+export default function Listening({ userId, token, globalLevel }) {
   const { examId, questionId } = useParams();
   const navigate = useNavigate();
   const key = `listening:${userId}`;
   const [progress, setProgress] = useState(() => read(key));
-  const [level, setLevel] = useState(() => read(key).level || 'N3');
+  const level = globalLevel;
   const [year, setYear] = useState(() => read(key).year || '');
   const [exams, setExams] = useState<any[]>([]);
   const [detail, setDetail] = useState<any>(null);
@@ -32,6 +40,13 @@ export default function Listening({ userId, token }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [retry, setRetry] = useState(0);
+  const [practiceMode, setPracticeMode] = useState('random');
+  const [practiceExamId, setPracticeExamId] = useState('');
+  const [practiceTypes, setPracticeTypes] = useState(LISTENING_TYPES.map(item => item.id));
+  const [practiceCount, setPracticeCount] = useState(10);
+  const [practiceSession, setPracticeSession] = useState<any>(null);
+  const [starting, setStarting] = useState(false);
+  useEffect(() => { setYear(''); }, [globalLevel]);
   function save(patch) { setProgress(p => { const next = { ...p, ...patch }; try { localStorage.setItem(key, JSON.stringify(next)); } catch { setError('无法保存进度，请检查浏览器存储空间。'); } return next; }); }
   useEffect(() => {
     let live = true; setLoading(true); setError(''); setDetail(null); setQuestions([]);
@@ -39,20 +54,51 @@ export default function Listening({ userId, token }) {
     load.then(data => { if (!live) return; if (examId) { setDetail(data[0]); setQuestions(data[1].filter(q => q.question_type >= 41 && q.question_type <= 46)); } else setExams(data.filter(e => e.listening_num > 0)); }).catch(e => { if (live) setError(`加载失败：${e.message}`); }).finally(() => { if (live) setLoading(false); });
     return () => { live = false; };
   }, [examId, level, retry]);
+  useEffect(() => { if (exams.length && !exams.some(exam => String(exam.id) === practiceExamId)) setPracticeExamId(String(exams[0].id)); }, [exams, practiceExamId]);
   const years = [...new Set(exams.map(e => e.title.match(/\d{4}/)?.[0] || '其他'))].sort().reverse();
   const selectedYear = years.includes(year) ? year : years[0];
   const q = questions.find(q => q.id === Number(questionId));
   const groups = (detail?.layers || []).map(l => ({ ...l, questions: questions.filter(q => q.layer_id === l.id) })).filter(l => l.questions.length);
   const openQuestion = (q) => { save({ last: { examId: detail.id, questionId: q.id, title: `${detail.level} · ${detail.title}` }, [q.id]: { ...progress[q.id], examId: detail.id, started: true } }); navigate(`/listening/${detail.id}/${q.id}`); };
-  return <div className="listening">
-    <header className="quiz-header"><Link className="icon-button" aria-label="返回" to={questionId ? `/listening/${examId}` : examId ? "/listening" : "/"}><ArrowLeft size={22} /></Link><div><div className="eyebrow">Listening Studio</div><h1>听力训练</h1><p>{detail ? `${detail.level} · ${detail.title}` : '先听，再理解，每天进步一点。'}</p></div></header>
-    <p className="listening-note">训练进度保存在当前浏览器，按登录账号分别记录。</p>
+  function togglePracticeType(type) { setPracticeTypes(current => current.includes(type) ? current.filter(item => item !== type) : [...current, type]); }
+  async function startListeningPractice(event) {
+    event.preventDefault();
+    if (!practiceTypes.length || (practiceMode === 'exam' && !practiceExamId)) return;
+    setStarting(true); setError('');
+    try {
+      const sources = practiceMode === 'exam' ? exams.filter(exam => exam.id === Number(practiceExamId)) : exams;
+      const loaded = await Promise.all(sources.map(async exam => {
+        const [examDetail, examQuestions] = await Promise.all([api(`/api/exams/${exam.id}`), api(`/api/exams/${exam.id}/questions`)]);
+        return examQuestions.filter(question => practiceTypes.includes(question.question_type)).map(question => ({ ...question, sourceExamId: exam.id, sourceExamTitle: exam.title, sourceLevel: exam.level, sourceDetail: examDetail }));
+      }));
+      const pool = loaded.flat();
+      if (!pool.length) throw new Error('所选条件下没有可用的听力题目');
+      const selected = practiceMode === 'random' ? [...pool].sort(() => Math.random() - .5).slice(0, Math.min(practiceCount, pool.length)) : pool;
+      setPracticeSession({ questions: selected, index: 0, finished: false });
+    } catch (e) { setError(`组题失败：${e.message}`); }
+    finally { setStarting(false); }
+  }
+  const practiceQuestion = practiceSession?.questions?.[practiceSession.index];
+  return <div className={examId || practiceSession ? "listening" : "grammar-practice-setup listening-setup"}>
+    <header className="quiz-header">{practiceSession ? <button className="icon-button" aria-label="返回设置" onClick={() => setPracticeSession(null)} type="button"><ArrowLeft size={22} /></button> : <Link className="icon-button" aria-label="返回" to={questionId ? `/listening/${examId}` : examId ? "/listening" : "/"}><ArrowLeft size={22} /></Link>}<div className={!examId && !practiceSession ? "grammar-practice-title" : ""}><div className="eyebrow">Listening Practice</div><h1>听力专项</h1><p>{practiceQuestion ? `${practiceQuestion.sourceLevel} · ${practiceQuestion.sourceExamTitle} · ${practiceSession.index + 1}/${practiceSession.questions.length}` : detail ? `${detail.level} · ${detail.title}` : '按来源、题型和题量组合听力练习'}</p></div></header>
+    {examId ? <p className="listening-note">训练进度保存在当前浏览器，按登录账号分别记录。</p> : null}
     {error && <div role="alert" className="listening-card">{error}<button className="secondary-button" onClick={() => setRetry(r => r + 1)}>重试</button></div>}
-    {loading ? <p role="status">正在加载听力题目…</p> : !examId ? <>
-      <div className="listening-tools"><div className="level-switch listening-level-switch">{['N3', 'N2'].map(l => <button className={level === l ? 'active' : ''} key={l} onClick={() => { setLevel(l); setYear(''); save({ level: l }); }}>{l}</button>)}</div><label>考试年份 <select value={selectedYear || ''} onChange={e => (() => { setYear(e.target.value); save({ year: e.target.value }); })()}>{years.map(y => <option key={y}>{y}</option>)}</select></label></div>
-      {progress.last && <Link className="listening-card resume" to={`/listening/${progress.last.examId}/${progress.last.questionId}`}>继续上次训练 · {progress.last.title} →</Link>}
-      <div className="listening-grid">{exams.filter(e => (e.title.match(/\d{4}/)?.[0] || '其他') === selectedYear).map(e => <Link key={e.id} className="listening-card" to={`/listening/${e.id}`}><span>{e.level} · 聴解</span><h2>{e.title}</h2><p>{e.listening_num} 道听力题 · 已完成 {Object.values(progress).filter((p: any) => p?.examId === e.id && p?.done).length} 题</p><strong>选择题型 →</strong></Link>)}</div>{!exams.length && <p>该级别暂无听力试卷。</p>}
-    </> : questionId ? q ? <Trainer key={`${userId}:${q.id}`} question={q} examId={detail.id} token={token} saved={progress[q.id] || {}} onSave={patch => save({ [q.id]: { ...progress[q.id], examId: detail.id, ...patch } })} onNext={() => { const next = questions[questions.indexOf(q) + 1]; next ? openQuestion(next) : navigate(`/listening/${examId}`); }} /> : <p>没有找到这道听力题，请返回列表选择。</p> : <>
+    {practiceSession?.finished ? <section className="listening-practice-result"><CheckCircle2 size={58} /><h2>听力专项完成</h2><strong>{practiceSession.questions.length} 题</strong><p>本次选择的听力题目已全部练习完成。</p><div><button className="primary-button" onClick={() => setPracticeSession(null)} type="button"><RotateCcw size={19} />重新设置</button><button className="secondary-button" onClick={() => navigate('/')} type="button">返回首页</button></div></section> : practiceQuestion ? <Trainer key={`practice:${practiceQuestion.id}`} question={practiceQuestion} examId={practiceQuestion.sourceExamId} token={token} saved={progress[practiceQuestion.id] || {}} onSave={patch => save({ last: { examId: practiceQuestion.sourceExamId, questionId: practiceQuestion.id, title: `${practiceQuestion.sourceLevel} · ${practiceQuestion.sourceExamTitle}` }, [practiceQuestion.id]: { ...progress[practiceQuestion.id], examId: practiceQuestion.sourceExamId, started: true, ...patch } })} onNext={() => setPracticeSession(current => current.index >= current.questions.length - 1 ? { ...current, finished: true } : { ...current, index: current.index + 1 })} /> : loading ? <p role="status">正在加载听力题目…</p> : !examId ? <form className="listening-setup-form" onSubmit={startListeningPractice}>
+      <section className="practice-config-section">
+        <div className="practice-config-heading"><span>1</span><div><h2>选择题目来源</h2><p>当前等级 · {level}，等级统一在首页切换</p></div></div>
+        <div className="practice-source-grid">
+          <label className={practiceMode === 'random' ? 'selected' : ''}><input type="radio" name="listening-source" checked={practiceMode === 'random'} onChange={() => setPracticeMode('random')} /><Play size={23} /><span><strong>全部试卷随机</strong><small>从 {level} 历年试卷中随机抽取</small></span></label>
+          <label className={practiceMode === 'exam' ? 'selected' : ''}><input type="radio" name="listening-source" checked={practiceMode === 'exam'} onChange={() => setPracticeMode('exam')} /><ClipboardList size={23} /><span><strong>指定试卷</strong><small>练习一张试卷中的所选听力题型</small></span></label>
+        </div>
+        {practiceMode === 'exam' ? <select className="practice-exam-select" value={practiceExamId} onChange={event => setPracticeExamId(event.target.value)}>{exams.map(exam => <option value={exam.id} key={exam.id}>{exam.title}</option>)}</select> : null}
+      </section>
+      <section className="practice-config-section">
+        <div className="practice-config-heading"><span>2</span><div><h2>选择听力题型</h2><p>可同时选择多种题型</p></div></div>
+        <div className="practice-type-grid">{LISTENING_TYPES.map(item => <label className={practiceTypes.includes(item.id) ? 'selected' : ''} key={item.id}><input type="checkbox" checked={practiceTypes.includes(item.id)} onChange={() => togglePracticeType(item.id)} /><CheckCircle2 size={20} /><span><strong>{item.label}</strong><small>{item.description}</small></span></label>)}</div>
+      </section>
+      {practiceMode === 'random' ? <section className="practice-config-section"><div className="practice-config-heading"><span>3</span><div><h2>设置题目数量</h2><p>实际题量不会超过可用题目数量</p></div></div><div className="practice-count-options">{[5, 10, 20, 30].map(value => <button className={practiceCount === value ? 'selected' : ''} onClick={() => setPracticeCount(value)} type="button" key={value}>{value}题</button>)}<label><input type="number" min="1" max="100" value={practiceCount} onChange={event => setPracticeCount(Number(event.target.value))} /><span>题</span></label></div></section> : null}
+      <div className="practice-start-bar"><div><strong>{practiceTypes.length} 种题型 · {practiceMode === 'random' ? `${practiceCount} 题` : '全部匹配题目'}</strong><span>{practiceMode === 'random' ? `${level} 全部试卷随机` : exams.find(exam => String(exam.id) === practiceExamId)?.title}</span></div><button className="primary-button" disabled={!practiceTypes.length || !exams.length || starting} type="submit">{starting ? '正在组题…' : '开始听力专项'}{!starting ? <Play size={19} /> : null}</button></div>
+    </form> : questionId ? q ? <Trainer key={`${userId}:${q.id}`} question={q} examId={detail.id} token={token} saved={progress[q.id] || {}} onSave={patch => save({ [q.id]: { ...progress[q.id], examId: detail.id, ...patch } })} onNext={() => { const next = questions[questions.indexOf(q) + 1]; next ? openQuestion(next) : navigate(`/listening/${examId}`); }} /> : <p>没有找到这道听力题，请返回列表选择。</p> : <>
       <div className="listening-tools"><strong>已完成 {questions.filter(q => progress[q.id]?.done).length} / {questions.length} 题</strong></div>
       {groups.map(g => <section className="listening-card" key={g.id}><h2>{plain(g.title).match(/問題\s*\d+/)?.[0] || '聴解'} · {({41: '課題理解 · 任务理解', 42: 'ポイント理解 · 要点理解', 43: '概要理解 · 概要理解', 44: detail.level === 'N2' ? '即時応答 · 即时应答' : '発話表現 · 表达选择', 45: '即時応答 · 即时应答', 46: '統合理解 · 综合理解'})[g.question_type]}</h2><p>{plain(g.title)}</p><div className="listening-grid">{g.questions.map((q, i) => ({ q, i })).map(({ q, i }) => <button className="secondary-button listening-question" key={q.id} onClick={() => openQuestion(q)}><strong>第 {i + 1} 题</strong><span>{segments(q.subtitle).length} 个精听片段</span><span>{progress[q.id]?.done ? '已完成' : progress[q.id]?.started ? '练习中' : '未练'}</span></button>)}</div></section>)}
     </>}
