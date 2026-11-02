@@ -1371,12 +1371,14 @@ export function ExamSessionView({
         <div className="exam-header-actions">
           {session.run ? <div className={`exam-timer ${remainingSeconds <= 300 ? "urgent" : ""}`}><Clock3 size={18} /><strong>{String(Math.floor(remainingSeconds / 60)).padStart(2, "0")}:{String(remainingSeconds % 60).padStart(2, "0")}</strong></div> : null}
           {!isTimedListening ? <button
-            className="secondary-button"
+            className={`secondary-button answer-sheet-toggle ${showAnswerSheet ? "active" : ""}`}
             onClick={() => setShowAnswerSheet((value) => !value)}
             type="button"
+            aria-expanded={showAnswerSheet}
+            aria-pressed={showAnswerSheet}
           >
             <ClipboardList size={18} />
-            答题卡
+            {showAnswerSheet ? "收起答题卡" : "答题卡"}
           </button> : null}
           <button className="primary-button" onClick={() => onSubmit(false)} type="button">
             {session.run ? "提交本科" : "提交"}
@@ -1391,13 +1393,6 @@ export function ExamSessionView({
             <div className="book-pill subject-reading">
               {session.exam.level} · {session.exam.title}
             </div>
-            <button
-              className="answer-sheet-close"
-              onClick={() => setShowAnswerSheet(false)}
-              type="button"
-            >
-              关闭
-            </button>
             <div className="answer-section-list">
               {answerParts.map((part) => (
                 <section className="answer-part" key={part.label}>

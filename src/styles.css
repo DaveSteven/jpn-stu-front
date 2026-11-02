@@ -2062,7 +2062,11 @@ h1 {
   position: sticky;
   top: 18px;
   display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 14px;
+  height: calc(100dvh - 36px);
+  max-height: calc(100dvh - 36px);
+  overflow: hidden;
   padding: 14px;
   border: 2px solid var(--line);
   border-radius: 18px;
@@ -2070,14 +2074,19 @@ h1 {
   box-shadow: 0 4px 0 var(--shadow);
 }
 
-.answer-sheet-close {
-  justify-self: end;
-  padding: 0;
-  border: 0;
-  color: var(--muted);
-  background: transparent;
-  cursor: pointer;
-  font-weight: 650;
+.answer-sheet-toggle.active {
+  color: #ffffff;
+  border-color: var(--blue-dark);
+  background: var(--blue-dark);
+  box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.18);
+}
+
+.answer-section-list {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding-right: 4px;
+  scrollbar-gutter: stable;
 }
 
 .answer-grid {
@@ -2088,6 +2097,7 @@ h1 {
 
 .answer-section-list {
   display: grid;
+  align-content: start;
   gap: 14px;
 }
 
@@ -3148,7 +3158,10 @@ h1 {
   }
 
   .answer-sheet {
-    position: static;
+    position: sticky;
+    top: 12px;
+    height: calc(100dvh - 24px);
+    max-height: calc(100dvh - 24px);
   }
 
   .answer-grid {
