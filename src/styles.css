@@ -1240,8 +1240,23 @@ h1 {
 }
 
 .exam-card.active-run {
-  grid-template-columns: minmax(0, 1fr);
-  gap: 14px;
+  grid-column: 1 / -1;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px 24px;
+  padding: 18px 20px;
+  border-color: #9cc9ee;
+  background: linear-gradient(135deg, #ffffff 0%, #f1f8ff 100%);
+  box-shadow: 0 5px 0 #c9d9e8;
+}
+
+.active-run-kicker {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--blue-dark);
+  font-size: .82rem;
+  font-weight: 800;
 }
 
 .exam-card.active-run .exam-card-actions {
@@ -3145,6 +3160,20 @@ h1 {
   .exam-card {
     align-items: stretch;
     grid-template-columns: 1fr;
+  }
+
+  .exam-card.active-run {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    padding: 16px;
+  }
+
+  .exam-card.active-run .exam-card-actions {
+    justify-content: stretch;
+  }
+
+  .exam-card.active-run .exam-card-actions > button {
+    flex: 1;
   }
 
   .exam-card-actions {

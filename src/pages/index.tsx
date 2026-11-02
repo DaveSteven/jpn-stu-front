@@ -255,6 +255,9 @@ export function ExamListView({
     examAttempts.map((attempt) => [attempt.examId, attempt]),
   );
   const activeRuns = new Map<number, any>(examRuns.map((run) => [run.exam_id, run]));
+  const orderedExams = [...exams].sort(
+    (left, right) => Number(activeRuns.has(right.id)) - Number(activeRuns.has(left.id)),
+  );
   const [now, setNow] = useState(Date.now());
   useEffect(() => {
     const timer = window.setInterval(() => setNow(Date.now()), 1000);
@@ -295,12 +298,13 @@ export function ExamListView({
 
       {exams.length ? (
         <div className="exam-list">
-          {exams.map((exam) => {
+          {orderedExams.map((exam) => {
             const last = examStats.get(exam.id);
             const activeRun = activeRuns.get(exam.id);
             const remaining = activeRun ? remainingInfo(activeRun) : null;
             return (
               <article className={`exam-card ${activeRun ? "active-run" : ""}`} key={exam.id}>
+                {activeRun ? <div className="active-run-kicker"><Clock3 size={17} />进行中的模拟考试</div> : null}
                 <div>
                   <div className="book-badge subject-reading">{exam.level}</div>
                   <h3>{exam.title}</h3>
