@@ -1253,7 +1253,7 @@ h1 {
 
 .active-run-main {
   display: grid;
-  grid-template-columns: minmax(180px, .65fr) minmax(330px, 1.35fr);
+  grid-template-columns: minmax(180px, 1fr) auto;
   align-items: center;
   gap: 18px;
   min-width: 0;
@@ -1284,6 +1284,9 @@ h1 {
 }
 
 .exam-card.active-run .exam-run-status {
+  justify-self: end;
+  width: fit-content;
+  min-width: 310px;
   margin-top: 0;
 }
 
@@ -3188,6 +3191,12 @@ h1 {
   .active-run-main {
     grid-template-columns: 1fr;
     gap: 12px;
+  }
+
+  .exam-card.active-run .exam-run-status {
+    justify-self: stretch;
+    width: auto;
+    min-width: 0;
   }
 
   .exam-card.active-run .exam-card-actions {
