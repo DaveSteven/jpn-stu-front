@@ -1,4 +1,5 @@
-export const API_BASE = import.meta.env.VITE_API_BASE || "http://127.0.0.1:8000";
+export const API_BASE =
+  import.meta.env.VITE_API_BASE || (import.meta.env.DEV ? "http://127.0.0.1:8000" : "");
 export const SESSION_TOKEN_KEY = "japanese-study-session-token";
 export const EXAM_CACHE_PREFIX = "japanese-study-exam-cache";
 export const USER_LEVEL_CACHE_PREFIX = "japanese-study-user-level";
