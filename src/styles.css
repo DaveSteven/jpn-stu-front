@@ -2064,8 +2064,8 @@ h1 {
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
   gap: 14px;
-  height: calc(100dvh - 36px);
-  max-height: calc(100dvh - 36px);
+  height: min(80dvh, calc(100dvh - 120px));
+  max-height: min(80dvh, calc(100dvh - 120px));
   overflow: hidden;
   padding: 14px;
   border: 2px solid var(--line);
@@ -3165,8 +3165,8 @@ h1 {
   .answer-sheet {
     position: sticky;
     top: 12px;
-    height: calc(100dvh - 24px);
-    max-height: calc(100dvh - 24px);
+    height: 80dvh;
+    max-height: calc(100dvh - 72px);
   }
 
   .answer-grid {
