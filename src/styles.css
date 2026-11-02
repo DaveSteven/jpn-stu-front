@@ -1242,15 +1242,28 @@ h1 {
 .exam-card.active-run {
   grid-column: 1 / -1;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: 14px 24px;
-  padding: 18px 20px;
+  align-items: center;
+  gap: 20px;
+  min-height: 0;
+  padding: 16px 18px;
   border-color: #9cc9ee;
   background: linear-gradient(135deg, #ffffff 0%, #f1f8ff 100%);
   box-shadow: 0 5px 0 #c9d9e8;
 }
 
+.active-run-main {
+  display: grid;
+  grid-template-columns: minmax(180px, .65fr) minmax(330px, 1.35fr);
+  align-items: center;
+  gap: 18px;
+  min-width: 0;
+}
+
+.active-run-identity { display: grid; gap: 8px; }
+.active-run-identity > div:last-child { display: flex; align-items: center; gap: 10px; }
+.active-run-identity h3 { margin: 0; }
+
 .active-run-kicker {
-  grid-column: 1 / -1;
   display: flex;
   align-items: center;
   gap: 7px;
@@ -1268,6 +1281,10 @@ h1 {
 
 .exam-card.active-run .exam-card-actions .primary-button {
   min-width: 132px;
+}
+
+.exam-card.active-run .exam-run-status {
+  margin-top: 0;
 }
 
 .exam-card h3 {
@@ -3166,6 +3183,11 @@ h1 {
     grid-template-columns: 1fr;
     gap: 14px;
     padding: 16px;
+  }
+
+  .active-run-main {
+    grid-template-columns: 1fr;
+    gap: 12px;
   }
 
   .exam-card.active-run .exam-card-actions {

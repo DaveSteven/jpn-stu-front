@@ -304,10 +304,8 @@ export function ExamListView({
             const remaining = activeRun ? remainingInfo(activeRun) : null;
             return (
               <article className={`exam-card ${activeRun ? "active-run" : ""}`} key={exam.id}>
-                {activeRun ? <div className="active-run-kicker"><Clock3 size={17} />进行中的模拟考试</div> : null}
-                <div>
-                  <div className="book-badge subject-reading">{exam.level}</div>
-                  <h3>{exam.title}</h3>
+                <div className={activeRun ? "active-run-main" : ""}>
+                  {activeRun ? <div className="active-run-identity"><div className="active-run-kicker"><Clock3 size={17} />继续上次考试</div><div><span className="book-badge subject-reading">{exam.level}</span><h3>{exam.title}</h3></div></div> : <><div className="book-badge subject-reading">{exam.level}</div><h3>{exam.title}</h3></>}
                   {activeRun && remaining ? <div className={`exam-run-status ${remaining.resting ? "resting" : ""}`}>
                     <div><span>当前科目</span><strong>{activeRun.sections[activeRun.current_section]?.label}</strong></div>
                     <div className="exam-run-countdown"><Clock3 size={18} /><span>{remaining.label}</span><strong>{remaining.value}</strong></div>
