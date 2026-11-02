@@ -998,9 +998,9 @@ function ExamIntroRoute({ examSession, onLoadIntro, onBack, onStart }) {
   const numericExamId = Number(examId);
   useEffect(() => {
     if (!Number.isFinite(numericExamId)) return;
-    if (examSession?.exam?.id === numericExamId && examSession?.phase === "intro") return;
+    if (examSession?.exam?.id === numericExamId) return;
     onLoadIntro(numericExamId);
-  }, [numericExamId, examSession?.exam?.id, examSession?.phase]);
+  }, [numericExamId, examSession?.exam?.id]);
   if (!Number.isFinite(numericExamId)) return <Navigate to="/exams" replace />;
   if (!examSession || examSession.exam.id !== numericExamId || examSession.phase !== "intro") return <div className="center-state">正在加载考试说明…</div>;
   return <ExamIntroView exam={examSession.exam} onBack={onBack} onStart={onStart} />;
