@@ -894,7 +894,6 @@ function App() {
               level={level}
               examAttempts={examAttempts}
               examRuns={examRuns}
-              onLevel={chooseLevel}
               onBack={resetToLibrary}
               onStartExam={startExam}
               onResumeExam={resumeExam}

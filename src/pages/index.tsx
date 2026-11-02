@@ -245,7 +245,6 @@ export function ExamListView({
   level,
   examAttempts,
   examRuns = [],
-  onLevel,
   onBack,
   onStartExam,
   onResumeExam,
@@ -262,13 +261,19 @@ export function ExamListView({
     return () => window.clearInterval(timer);
   }, []);
 
-  function remainingLabel(run) {
-    if (run.status === "awaiting_section") return "科间休息中";
+  function remainingInfo(run) {
+    if (run.status === "awaiting_section") {
+      return { label: "科间休息", value: "等待开始", resting: true };
+    }
     const value = run.section_expires_at;
-    if (!value) return "进行中";
+    if (!value) return { label: "考试进行中", value: "计时中", resting: false };
     const normalized = /(?:Z|[+-]\d\d:\d\d)$/.test(value) ? value : `${value}Z`;
     const seconds = Math.max(0, Math.ceil((new Date(normalized).getTime() - now) / 1000));
-    return `剩余 ${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+    return {
+      label: "本科剩余",
+      value: `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`,
+      resting: false,
+    };
   }
 
   return (
@@ -288,34 +293,21 @@ export function ExamListView({
         </div>
       </header>
 
-      <div
-        className="level-switch exam-level-switch"
-        role="tablist"
-        aria-label="JLPT 等级"
-      >
-        {LEVELS.map((item) => (
-          <button
-            key={item}
-            className={level === item ? "active" : ""}
-            onClick={() => onLevel(item)}
-            type="button"
-          >
-            {item}
-          </button>
-        ))}
-      </div>
-
       {exams.length ? (
         <div className="exam-list">
           {exams.map((exam) => {
             const last = examStats.get(exam.id);
             const activeRun = activeRuns.get(exam.id);
+            const remaining = activeRun ? remainingInfo(activeRun) : null;
             return (
-              <article className="exam-card" key={exam.id}>
+              <article className={`exam-card ${activeRun ? "active-run" : ""}`} key={exam.id}>
                 <div>
                   <div className="book-badge subject-reading">{exam.level}</div>
                   <h3>{exam.title}</h3>
-                  {activeRun ? <p className="exam-run-status">{activeRun.sections[activeRun.current_section]?.label} · {remainingLabel(activeRun)}</p> : null}
+                  {activeRun && remaining ? <div className={`exam-run-status ${remaining.resting ? "resting" : ""}`}>
+                    <div><span>当前科目</span><strong>{activeRun.sections[activeRun.current_section]?.label}</strong></div>
+                    <div className="exam-run-countdown"><Clock3 size={18} /><span>{remaining.label}</span><strong>{remaining.value}</strong></div>
+                  </div> : null}
                   {last ? <p>最近成绩 {pct(last.correct, last.total)}%</p> : null}
                 </div>
                 <div className="exam-card-actions">
