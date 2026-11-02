@@ -1474,6 +1474,8 @@ export function ExamSessionView({
             {currentProblem?.partLabel === "阅读" && currentProblemPages.length > 1 ? <small>第 {currentProblemPageIndex + 1} / {currentProblemPages.length} 页</small> : null}
           </div>
 
+          {currentProblem?.layer?.image_url ? <img className="exam-image exam-shared-image" src={assetSrc(currentProblem.layer.image_url)} alt="" /> : null}
+
           {isTimedListening ? <section className="listening-exam-player"><Headphones size={28} /><div><strong>{listeningStarted ? "听力音频播放中" : "准备播放听力音频"}</strong><p>音频只能播放一次，结束后将自动进入下一组。</p></div>{!listeningStarted ? <button className="primary-button" type="button" onClick={() => setListeningStarted(true)}>开始播放</button> : <span>正在播放</span>}<audio ref={audioRef} src={assetSrc(currentAudioUrl)} preload="auto" onEnded={finishListeningAudio} controls={false} /></section> : null}
 
           <section className="exam-problem-page">
@@ -1715,6 +1717,7 @@ export function ExamResultView({
                   <div className="review-problem-heading">
                     {section.problemLabel}
                   </div>
+                  {section.layer?.image_url ? <img className="review-image" src={assetSrc(section.layer.image_url)} alt="" /> : null}
                   {groupReviewItemsByPassage(section.items).map(
                     (passageGroup, passageGroupIndex) => (
                       <section
