@@ -57,6 +57,22 @@ function writeStoredQuizSession(session) {
   localStorage.setItem(QUIZ_SESSION_KEY, JSON.stringify(session));
 }
 
+function questionsForRunSection(allQuestions, run) {
+  const section = run?.sections?.[run.current_section];
+  if (!section) return [];
+  const sectionIds = new Set(section.question_ids || []);
+  const byIds = allQuestions.filter((question) => sectionIds.has(question.id));
+  if (byIds.length) return byIds;
+  return allQuestions.filter((question) => {
+    const type = Number(question.question_type || 0);
+    if (section.key === "listening") return type >= 41;
+    if (section.key === "language_reading") return type < 41;
+    if (section.key === "vocabulary") return type < 21;
+    if (section.key === "grammar_reading") return type >= 21 && type < 41;
+    return false;
+  });
+}
+
 function App() {
   const navigate = useNavigate();
   const [books, setBooks] = useState([]);
@@ -370,9 +386,7 @@ function App() {
       api(`/api/exam-runs/${cached.runId}`, {}, authToken),
     ]);
     const exam = baseExam || exams.find((item) => item.id === numericExamId) || mapExam(detail);
-    const section = run.sections[run.current_section];
-    const sectionIds = new Set(section?.question_ids || []);
-    const questions = allQuestions.filter((question) => sectionIds.has(question.id));
+    const questions = questionsForRunSection(allQuestions, run);
     const cachedIndex = Number.isInteger(cached.index) ? cached.index : 0;
     const restored = {
       exam: { ...exam, layers: detail.layers || [] },
@@ -422,11 +436,10 @@ function App() {
       api(`/api/exams/${exam.id}/questions`, {}, authToken),
       api(`/api/exam-runs?exam_id=${exam.id}`, { method: "POST" }, authToken),
     ]);
-    const sectionIds = new Set(run.sections[run.current_section]?.question_ids || []);
     const cached = readExamCache(currentUser.id, exam.id);
     const next = {
       exam: { ...exam, layers: detail.layers || [] }, run, allQuestions,
-      questions: allQuestions.filter((question) => sectionIds.has(question.id)),
+      questions: questionsForRunSection(allQuestions, run),
       index: 0, answers: { ...(cached.answers || {}), ...(run.answers || {}) }, finishedAttempt: null,
     };
     writeExamCache(currentUser.id, exam.id, { runId: run.id, index: 0, answers: next.answers, updatedAt: new Date().toISOString() });
@@ -673,8 +686,7 @@ function App() {
       navigate(`/exams/${examSession.exam.id}/review/${run.attempt_id}`);
       return;
     }
-    const sectionIds = new Set(run.sections[run.current_section]?.question_ids || []);
-    const next = { ...examSession, run, questions: examSession.allQuestions.filter((question) => sectionIds.has(question.id)), index: 0 };
+    const next = { ...examSession, run, questions: questionsForRunSection(examSession.allQuestions, run), index: 0 };
     writeExamCache(currentUser.id, next.exam.id, { runId: run.id, index: 0, answers: next.answers, updatedAt: new Date().toISOString() });
     setExamSession(next);
   }
@@ -964,6 +976,10 @@ function ExamRoute({
 
   if (examSession.run?.status === "awaiting_section") {
     return <ExamSectionBreakView session={examSession} onStartNext={onStartNext} />;
+  }
+
+  if (!examSession.questions?.length) {
+    return <div className="center-state error">当前科目没有可显示的题目。<button className="secondary-button" onClick={onBack} type="button">返回试卷列表</button></div>;
   }
 
   return (
