@@ -11,6 +11,18 @@ export const SUBJECTS = [
   { id: "kanji", label: "汉字" },
 ];
 
+export const JLPT_EXAM_SECTIONS = {
+  N1: [{ key: "language_reading", label: "语言知识・阅读", durationMinutes: 110 }, { key: "listening", label: "听力", durationMinutes: 55 }],
+  N2: [{ key: "language_reading", label: "语言知识・阅读", durationMinutes: 105 }, { key: "listening", label: "听力", durationMinutes: 50 }],
+  N3: [{ key: "vocabulary", label: "文字词汇", durationMinutes: 30 }, { key: "grammar_reading", label: "文法・阅读", durationMinutes: 70 }, { key: "listening", label: "听力", durationMinutes: 40 }],
+  N4: [{ key: "vocabulary", label: "文字词汇", durationMinutes: 25 }, { key: "grammar_reading", label: "文法・阅读", durationMinutes: 55 }, { key: "listening", label: "听力", durationMinutes: 35 }],
+  N5: [{ key: "vocabulary", label: "文字词汇", durationMinutes: 20 }, { key: "grammar_reading", label: "文法・阅读", durationMinutes: 40 }, { key: "listening", label: "听力", durationMinutes: 30 }],
+};
+
+export function examSectionsForLevel(level) {
+  return JLPT_EXAM_SECTIONS[level] || JLPT_EXAM_SECTIONS.N5;
+}
+
 export async function api(path: string, options: RequestInit = {}, token: string | null = null) {
   const response = await fetch(`${API_BASE}${path}`, {
     headers: {
@@ -259,7 +271,11 @@ export function groupQuestionsByPassage(questions) {
   const groups = [];
   for (const question of questions) {
     const previous = groups[groups.length - 1];
-    const passage = question.passage || "";
+    const rawPassage = question.passage || "";
+    const passage = rawPassage
+      .replace(/<[^>]*>/g, "")
+      .replace(/&nbsp;|&#160;/gi, " ")
+      .trim() ? rawPassage : "";
     if (previous && previous.passage === passage) {
       previous.questions.push(question);
     } else {
@@ -273,7 +289,11 @@ export function groupReviewItemsByPassage(items) {
   const groups = [];
   for (const item of items) {
     const question = item.question || {};
-    const passage = question.passage || "";
+    const rawPassage = question.passage || "";
+    const passage = rawPassage
+      .replace(/<[^>]*>/g, "")
+      .replace(/&nbsp;|&#160;/gi, " ")
+      .trim() ? rawPassage : "";
     const translation = question.translation || "";
     const key = passage ? `${passage}\n${translation}` : `${question.id || item.index}`;
     const previous = groups[groups.length - 1];

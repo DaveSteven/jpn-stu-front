@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { Navigate, Route, Routes, useNavigate, useParams } from "react-router-dom";
 import {
   DEFAULT_LEVEL,
@@ -19,7 +19,9 @@ import {
 } from "./lib/study";
 import {
   ExamListView,
+  ExamIntroView,
   ExamResultView,
+  ExamSectionBreakView,
   ExamSessionView,
   RandomPracticeSessionView,
   GrammarPracticeSetupView,
@@ -74,6 +76,7 @@ function App() {
   const [vocabularyStats, setVocabularyStats] = useState({ total: 0, new: 0, learning: 0, mastered: 0 });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const examSaveQueue = useRef(Promise.resolve());
 
   async function refreshStudyData(nextLevel = level, token = authToken) {
     if (!token) return;
@@ -353,24 +356,65 @@ function App() {
   async function loadExam(examId, baseExam = null) {
     setError("");
     const numericExamId = Number(examId);
-    const [detail, questions] = await Promise.all([
+    const cached = readExamCache(currentUser.id, numericExamId);
+    if (!cached.runId) {
+      navigate(`/exams/${numericExamId}/start`, { replace: true });
+      return;
+    }
+    const [detail, allQuestions, run] = await Promise.all([
       api(`/api/exams/${numericExamId}`, {}, authToken),
       api(`/api/exams/${numericExamId}/questions`, {}, authToken),
+      api(`/api/exam-runs/${cached.runId}`, {}, authToken),
     ]);
     const exam = baseExam || exams.find((item) => item.id === numericExamId) || mapExam(detail);
-    const cached = readExamCache(currentUser.id, numericExamId);
+    const section = run.sections[run.current_section];
+    const sectionIds = new Set(section?.question_ids || []);
+    const questions = allQuestions.filter((question) => sectionIds.has(question.id));
     const cachedIndex = Number.isInteger(cached.index) ? cached.index : 0;
-    setExamSession({
+    const restored = {
       exam: { ...exam, layers: detail.layers || [] },
+      run,
+      allQuestions,
       questions,
       index: Math.max(0, Math.min(questions.length - 1, cachedIndex)),
-      answers: cached.answers || {},
+      answers: { ...(cached.answers || {}), ...(run.answers || {}) },
       finishedAttempt: null,
-    });
+    };
+    if (run.status === "completed") {
+      clearExamCache(currentUser.id, numericExamId);
+      await loadExamReview(numericExamId, run.attempt_id);
+      navigate(`/exams/${numericExamId}/review/${run.attempt_id}`, { replace: true });
+      return;
+    }
+    setExamSession(restored);
   }
 
   async function startExam(exam) {
-    await loadExam(exam.id, exam);
+    setExamSession({ exam, phase: "intro" });
+    navigate(`/exams/${exam.id}/start`);
+  }
+
+  async function loadExamIntro(examId) {
+    const detail = await api(`/api/exams/${Number(examId)}`, {}, authToken);
+    setExamSession({ exam: { ...mapExam(detail), layers: detail.layers || [] }, phase: "intro" });
+  }
+
+  async function beginExam() {
+    const exam = examSession.exam;
+    const [detail, allQuestions, run] = await Promise.all([
+      api(`/api/exams/${exam.id}`, {}, authToken),
+      api(`/api/exams/${exam.id}/questions`, {}, authToken),
+      api(`/api/exam-runs?exam_id=${exam.id}`, { method: "POST" }, authToken),
+    ]);
+    const sectionIds = new Set(run.sections[run.current_section]?.question_ids || []);
+    const cached = readExamCache(currentUser.id, exam.id);
+    const next = {
+      exam: { ...exam, layers: detail.layers || [] }, run, allQuestions,
+      questions: allQuestions.filter((question) => sectionIds.has(question.id)),
+      index: 0, answers: { ...(cached.answers || {}), ...(run.answers || {}) }, finishedAttempt: null,
+    };
+    writeExamCache(currentUser.id, exam.id, { runId: run.id, index: 0, answers: next.answers, updatedAt: new Date().toISOString() });
+    setExamSession(next);
     navigate(`/exams/${exam.id}`);
   }
 
@@ -541,19 +585,28 @@ function App() {
     navigate("/");
   }
 
-  function chooseExamOption(questionId, optionId) {
+  async function chooseExamOption(questionId, optionId) {
     setExamSession((current) => {
       const next = {
         ...current,
         answers: { ...current.answers, [questionId]: optionId },
       };
       writeExamCache(currentUser.id, next.exam.id, {
+        runId: next.run?.id,
         index: next.index,
         answers: next.answers,
         updatedAt: new Date().toISOString(),
       });
       return next;
     });
+    if (examSession?.run) {
+      examSaveQueue.current = examSaveQueue.current.catch(() => null).then(() => api(`/api/exam-runs/${examSession.run.id}/answers/${questionId}`, {
+          method: "PUT",
+          body: JSON.stringify({ chosen_option_id: optionId }),
+        }, authToken));
+      const run = await examSaveQueue.current;
+      setExamSession((current) => current ? ({ ...current, run }) : current);
+    }
   }
 
   function moveExamQuestion(nextIndex) {
@@ -563,6 +616,7 @@ function App() {
         index: Math.max(0, Math.min(current.questions.length - 1, nextIndex)),
       };
       writeExamCache(currentUser.id, next.exam.id, {
+        runId: next.run?.id,
         index: next.index,
         answers: next.answers,
         updatedAt: new Date().toISOString(),
@@ -571,22 +625,46 @@ function App() {
     });
   }
 
-  async function submitExam() {
+  async function saveCompletedExam(current) {
     const saved = mapExamAttempt(
       await api("/api/exam-attempts", {
         method: "POST",
         body: JSON.stringify({
-          exam_id: examSession.exam.id,
-          answers: examSession.questions.map((question) => ({
+          exam_id: current.exam.id,
+          answers: current.allQuestions.map((question) => ({
             question_id: question.id,
-            chosen_option_id: examSession.answers[question.id] || null,
+            chosen_option_id: current.answers[question.id] || null,
           })),
         }),
       }, authToken),
     );
     await refreshStudyData(level, authToken);
-    clearExamCache(currentUser.id, examSession.exam.id);
-    setExamSession((current) => ({ ...current, finishedAttempt: saved }));
+    clearExamCache(currentUser.id, current.exam.id);
+    setExamSession((session) => ({ ...session, finishedAttempt: saved, reviewAttemptId: saved.id }));
+    navigate(`/exams/${current.exam.id}/review/${saved.id}`);
+  }
+
+  async function submitExam(timedOut = false) {
+    if (!examSession?.run) return saveCompletedExam(examSession);
+    if (!timedOut && !window.confirm("提交后将锁定本科答案，不能返回修改。确定提交吗？")) return;
+    await examSaveQueue.current;
+    const run = await api(`/api/exam-runs/${examSession.run.id}/section/complete`, { method: "POST" }, authToken);
+    if (run.status === "completed") {
+      clearExamCache(currentUser.id, examSession.exam.id);
+      await refreshStudyData(level, authToken);
+      await loadExamReview(examSession.exam.id, run.attempt_id);
+      navigate(`/exams/${examSession.exam.id}/review/${run.attempt_id}`);
+      return;
+    }
+    const sectionIds = new Set(run.sections[run.current_section]?.question_ids || []);
+    const next = { ...examSession, run, questions: examSession.allQuestions.filter((question) => sectionIds.has(question.id)), index: 0 };
+    writeExamCache(currentUser.id, next.exam.id, { runId: run.id, index: 0, answers: next.answers, updatedAt: new Date().toISOString() });
+    setExamSession(next);
+  }
+
+  async function startNextExamSection() {
+    const run = await api(`/api/exam-runs/${examSession.run.id}/section/start`, { method: "POST" }, authToken);
+    setExamSession((current) => ({ ...current, run, index: 0 }));
   }
 
   function nextQuestion() {
@@ -794,6 +872,17 @@ function App() {
           )}
         />
         <Route
+          path="/exams/:examId/start"
+          element={(
+            <ExamIntroRoute
+              examSession={examSession}
+              onLoadIntro={loadExamIntro}
+              onBack={resetToExamList}
+              onStart={beginExam}
+            />
+          )}
+        />
+        <Route
           path="/exams/:examId"
           element={(
             <ExamRoute
@@ -803,6 +892,7 @@ function App() {
               onChoose={chooseExamOption}
               onMove={moveExamQuestion}
               onSubmit={submitExam}
+              onStartNext={startNextExamSection}
               onRepeat={startExam}
             />
           )}
@@ -832,6 +922,7 @@ function ExamRoute({
   onChoose,
   onMove,
   onSubmit,
+  onStartNext,
   onRepeat,
 }) {
   const { examId } = useParams();
@@ -851,6 +942,10 @@ function ExamRoute({
     return <div className="center-state">正在加载试卷…</div>;
   }
 
+  if (examSession.run?.status === "awaiting_section") {
+    return <ExamSectionBreakView session={examSession} onStartNext={onStartNext} />;
+  }
+
   return (
     <ExamSessionView
       session={examSession}
@@ -860,6 +955,19 @@ function ExamRoute({
       onSubmit={onSubmit}
     />
   );
+}
+
+function ExamIntroRoute({ examSession, onLoadIntro, onBack, onStart }) {
+  const { examId } = useParams();
+  const numericExamId = Number(examId);
+  useEffect(() => {
+    if (!Number.isFinite(numericExamId)) return;
+    if (examSession?.exam?.id === numericExamId && examSession?.phase === "intro") return;
+    onLoadIntro(numericExamId);
+  }, [numericExamId, examSession?.exam?.id, examSession?.phase]);
+  if (!Number.isFinite(numericExamId)) return <Navigate to="/exams" replace />;
+  if (!examSession || examSession.exam.id !== numericExamId || examSession.phase !== "intro") return <div className="center-state">正在加载考试说明…</div>;
+  return <ExamIntroView exam={examSession.exam} onBack={onBack} onStart={onStart} />;
 }
 
 function ExamReviewRoute({

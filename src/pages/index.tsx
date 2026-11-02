@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -8,6 +8,7 @@ import {
   Check,
   ChevronRight,
   ClipboardList,
+  Clock3,
   FileText,
   History,
   Headphones,
@@ -32,6 +33,7 @@ import {
   examQuestionCategoryLabel,
   examPassMark,
   examQuestionDisplayNumber,
+  examSectionsForLevel,
   formatDate,
   groupQuestionsByPassage,
   groupReviewItemsByPassage,
@@ -327,6 +329,37 @@ export function ExamListView({
       )}
     </section>
   );
+}
+
+export function ExamIntroView({ exam, onBack, onStart, starting = false }) {
+  const sections = examSectionsForLevel(exam.level);
+  const totalMinutes = sections.reduce((sum, section) => sum + section.durationMinutes, 0);
+  return (
+    <section className="exam-intro-view">
+      <header className="quiz-header">
+        <button className="icon-button" onClick={onBack} type="button" aria-label="返回"><ArrowLeft size={22} /></button>
+        <div><div className="eyebrow">JLPT 标准模拟考试</div><h1>{exam.title}</h1><p>{exam.level} · 共 {exam.questionCount || exam.question_count || 0} 题</p></div>
+      </header>
+      <section className="exam-intro-card">
+        <div className="exam-intro-summary"><Clock3 size={30} /><div><span>预计考试用时</span><strong>{totalMinutes} 分钟</strong></div></div>
+        <div className="exam-section-schedule">
+          {sections.map((section, index) => <div key={section.key}><span>{index + 1}</span><div><strong>{section.label}</strong><small>{section.durationMinutes} 分钟</small></div></div>)}
+        </div>
+        <ul className="exam-rules">
+          <li>每科独立计时，到时自动提交并锁定本科答案。</li>
+          <li>进入下一科后不能返回上一科修改答案。</li>
+          <li>刷新或暂时离开页面不会暂停倒计时。</li>
+          <li>科目之间不计时，确认后才开始下一科。</li>
+        </ul>
+        <div className="result-actions"><button className="primary-button" onClick={onStart} disabled={starting} type="button">{starting ? "正在准备…" : "确认并开始第一科"}</button><button className="secondary-button" onClick={onBack} type="button">返回试卷列表</button></div>
+      </section>
+    </section>
+  );
+}
+
+export function ExamSectionBreakView({ session, onStartNext }) {
+  const section = session.run.sections[session.run.current_section];
+  return <section className="exam-intro-view"><div className="exam-intro-card exam-break-card"><div className="book-badge subject-reading">上一科已提交</div><h1>准备开始：{section.label}</h1><p>本部分考试时间为 {section.duration_minutes} 分钟。点击后立即开始计时，之后不能返回上一科。</p><button className="primary-button" onClick={onStartNext} type="button">开始本部分</button></div></section>;
 }
 
 export const PRACTICE_CATEGORIES = {
@@ -1034,6 +1067,16 @@ function cleanInlineHtml(html) {
     .trim();
 }
 
+function hasVisibleHtml(html) {
+  const cleaned = cleanHtml(html);
+  if (!cleaned) return false;
+  if (typeof DOMParser !== "undefined") {
+    const doc = new DOMParser().parseFromString(cleaned, "text/html");
+    return Boolean((doc.body.textContent || "").replace(/\u00a0/g, " ").trim());
+  }
+  return Boolean(cleaned.replace(/<[^>]*>/g, "").replace(/&nbsp;/gi, " ").trim());
+}
+
 function HtmlContent({ html }) {
   if (!html) return null;
   return (
@@ -1139,7 +1182,7 @@ export function RandomPracticeSessionView({ session, onBack, onChoose, onMove, o
       <article className="random-practice-question">
         <div className="random-practice-meta"><span className="book-pill subject-reading">{session.exam.level} · {examQuestionCategoryLabel(question)}</span><small>{question.source_exam_title}</small></div>
         <div className="random-practice-number">第 {question.practice_order || session.index + 1} 题</div>
-        {question.passage ? <section className="exam-passage"><HtmlContent html={question.passage} /></section> : null}
+        {hasVisibleHtml(question.passage) ? <section className="exam-passage"><HtmlContent html={question.passage} /></section> : null}
         <div className="random-practice-title"><HtmlContent html={question.title} /></div>
         {question.image_url ? <img className="exam-image" src={assetSrc(question.image_url)} alt="" /> : null}
         <section className="options-grid exam-options">
@@ -1162,6 +1205,33 @@ export function ExamSessionView({
   onSubmit,
 }) {
   const [showAnswerSheet, setShowAnswerSheet] = useState(false);
+  const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const [listeningStarted, setListeningStarted] = useState(false);
+  const expiredRef = useRef(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const expiresAt = session.run?.section_expires_at;
+  useEffect(() => {
+    if (!expiresAt) return undefined;
+    expiredRef.current = false;
+    const normalized = /(?:Z|[+-]\d\d:\d\d)$/.test(expiresAt) ? expiresAt : `${expiresAt}Z`;
+    const update = () => {
+      const remaining = Math.max(0, Math.ceil((new Date(normalized).getTime() - Date.now()) / 1000));
+      setRemainingSeconds(remaining);
+      if (remaining === 0 && !expiredRef.current) {
+        expiredRef.current = true;
+        onSubmit(true);
+      }
+    };
+    update();
+    const timer = window.setInterval(update, 1000);
+    return () => window.clearInterval(timer);
+  }, [expiresAt, onSubmit]);
+  useEffect(() => {
+    if (!session.run || session.run.status !== "in_progress") return undefined;
+    const warn = (event) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [session.run?.id, session.run?.status]);
   const question = session.questions[session.index];
   const answeredCount = Object.keys(session.answers).length;
   const problemSections = buildExamProblemSections(
@@ -1179,8 +1249,29 @@ export function ExamSessionView({
   );
   const currentProblem =
     problemSections[currentProblemIndex] || problemSections[0];
-  const canPrev = currentProblemIndex > 0;
-  const canNext = currentProblemIndex < problemSections.length - 1;
+  const problemPages = problemSections.flatMap((section, problemIndex) =>
+    groupQuestionsByPassage(section.questions).map((group, groupIndex) => ({
+      ...group,
+      section,
+      problemIndex,
+      groupIndex,
+    })),
+  );
+  const currentPageIndex = Math.max(0, problemPages.findIndex((page) =>
+    page.questions.some((item) => item.id === question.id),
+  ));
+  const currentPage = problemPages[currentPageIndex] || {
+    passage: "",
+    questions: currentProblem?.questions || [],
+    section: currentProblem,
+  };
+  const currentProblemPages = problemPages.filter((page) => page.problemIndex === currentProblemIndex);
+  const currentProblemPageIndex = Math.max(0, currentProblemPages.findIndex((page) => page === currentPage));
+  const currentRunSection = session.run?.sections?.[session.run.current_section];
+  const isTimedListening = currentRunSection?.key === "listening";
+  const currentAudioUrl = currentPage.questions.find((item) => item.media_url)?.media_url || "";
+  const canPrev = currentPageIndex > 0;
+  const canNext = currentPageIndex < problemPages.length - 1;
   const answerParts = [];
 
   for (const section of problemSections) {
@@ -1202,6 +1293,28 @@ export function ExamSessionView({
     );
   }
 
+  function moveToPage(pageIndex) {
+    const target = problemPages[pageIndex];
+    const firstQuestion = target?.questions[0];
+    if (!firstQuestion) return;
+    onMove(questionIndexById.get(firstQuestion.id) || 0);
+    requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "smooth" }));
+  }
+
+  useEffect(() => {
+    if (!isTimedListening || !listeningStarted || !audioRef.current || !currentAudioUrl) return;
+    audioRef.current.play().catch(() => setListeningStarted(false));
+  }, [currentPageIndex, currentAudioUrl, isTimedListening, listeningStarted]);
+
+  useEffect(() => {
+    if (isTimedListening && listeningStarted && !currentAudioUrl) finishListeningAudio();
+  }, [currentPageIndex, currentAudioUrl, isTimedListening, listeningStarted]);
+
+  function finishListeningAudio() {
+    if (canNext) moveToPage(currentPageIndex + 1);
+    else onSubmit(true);
+  }
+
   return (
     <div className="exam-view">
       <header className="quiz-header">
@@ -1220,16 +1333,17 @@ export function ExamSessionView({
           </span>
         </div>
         <div className="exam-header-actions">
-          <button
+          {session.run ? <div className={`exam-timer ${remainingSeconds <= 300 ? "urgent" : ""}`}><Clock3 size={18} /><strong>{String(Math.floor(remainingSeconds / 60)).padStart(2, "0")}:{String(remainingSeconds % 60).padStart(2, "0")}</strong></div> : null}
+          {!isTimedListening ? <button
             className="secondary-button"
             onClick={() => setShowAnswerSheet((value) => !value)}
             type="button"
           >
             <ClipboardList size={18} />
             答题卡
-          </button>
-          <button className="primary-button" onClick={onSubmit} type="button">
-            提交
+          </button> : null}
+          <button className="primary-button" onClick={() => onSubmit(false)} type="button">
+            {session.run ? "提交本科" : "提交"}
           </button>
         </div>
       </header>
@@ -1325,21 +1439,22 @@ export function ExamSessionView({
           <div className="exam-question-head">
             <span>{currentProblem?.problemLabel.replace("問題", "")}</span>
             <p>{currentProblem?.layer.title}</p>
+            {currentProblem?.partLabel === "阅读" && currentProblemPages.length > 1 ? <small>第 {currentProblemPageIndex + 1} / {currentProblemPages.length} 页</small> : null}
           </div>
 
+          {isTimedListening ? <section className="listening-exam-player"><Headphones size={28} /><div><strong>{listeningStarted ? "听力音频播放中" : "准备播放听力音频"}</strong><p>音频只能播放一次，结束后将自动进入下一组。</p></div>{!listeningStarted ? <button className="primary-button" type="button" onClick={() => setListeningStarted(true)}>开始播放</button> : <span>正在播放</span>}<audio ref={audioRef} src={assetSrc(currentAudioUrl)} preload="auto" onEnded={finishListeningAudio} controls={false} /></section> : null}
+
           <section className="exam-problem-page">
-            {groupQuestionsByPassage(currentProblem?.questions || []).map(
-              (group, groupIndex) => (
                 <section
                   className="exam-passage-group"
-                  key={`${currentProblem?.id}-${groupIndex}`}
+                  key={`${currentProblem?.id}-${currentPage.groupIndex || 0}`}
                 >
-                  {group.passage ? (
+                  {hasVisibleHtml(currentPage.passage) ? (
                     <section className="exam-passage">
-                      <HtmlContent html={group.passage} />
+                      <HtmlContent html={currentPage.passage} />
                     </section>
                   ) : null}
-                  {group.questions.map((item) => {
+                  {currentPage.questions.map((item) => {
                     const globalIndex = questionIndexById.get(item.id) || 0;
                     const sectionQuestionIndex = Math.max(
                       0,
@@ -1361,7 +1476,7 @@ export function ExamSessionView({
                           <HtmlContent html={item.title} />
                         </div>
 
-                        {item.media_url ? (
+                        {item.media_url && !isTimedListening ? (
                           <audio
                             className="exam-audio"
                             controls
@@ -1396,14 +1511,12 @@ export function ExamSessionView({
                     );
                   })}
                 </section>
-              ),
-            )}
           </section>
 
-          <footer className="exam-nav">
+          {!isTimedListening ? <footer className="exam-nav">
             <button
               className="secondary-button"
-              onClick={() => moveToProblem(currentProblemIndex - 1)}
+              onClick={() => moveToPage(currentPageIndex - 1)}
               disabled={!canPrev}
               type="button"
             >
@@ -1411,13 +1524,13 @@ export function ExamSessionView({
             </button>
             <button
               className="primary-button"
-              onClick={() => moveToProblem(currentProblemIndex + 1)}
+              onClick={() => moveToPage(currentPageIndex + 1)}
               disabled={!canNext}
               type="button"
             >
               下一组
             </button>
-          </footer>
+          </footer> : null}
         </section>
       </section>
     </div>
