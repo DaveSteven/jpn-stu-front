@@ -385,7 +385,7 @@ function App() {
     const numericAttemptId = Number(attemptId);
     const [detail, questions, attemptDetail] = await Promise.all([
       api(`/api/exams/${numericExamId}`, {}, authToken),
-      api(`/api/exams/${numericExamId}/questions`, {}, authToken),
+      api(`/api/exam-attempts/${numericAttemptId}/questions`, {}, authToken),
       api(`/api/exam-attempts/${numericAttemptId}`, {}, authToken),
     ]);
     const baseExam = exams.find((exam) => exam.id === numericExamId) || mapExam(detail);

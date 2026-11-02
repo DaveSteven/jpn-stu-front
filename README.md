@@ -101,11 +101,15 @@ src/
   styles.css        global styles
 ```
 
-Static quiz data currently lives under:
+Raw quiz import data is kept outside the public Vite directory under:
 
 ```text
-public/data/
+source_data/
 ```
+
+The browser receives filtered quiz payloads from the API. Do not move raw quiz
+data into `public/`, because those files include answer and explanation fields
+and Vite publishes that directory without access control.
 
 ## Local State
 
