@@ -7,8 +7,8 @@ export const DEFAULT_LEVEL = "N5";
 export const LEVELS = ["N5", "N4", "N3", "N2", "N1"];
 export const SUBJECTS = [
   { id: "grammar", label: "文法" },
-  { id: "meaning", label: "語彙" },
-  { id: "kanji", label: "漢字" },
+  { id: "meaning", label: "词汇" },
+  { id: "kanji", label: "汉字" },
 ];
 
 export async function api(path: string, options: RequestInit = {}, token: string | null = null) {
@@ -170,18 +170,18 @@ export function mapExamAttempt(attempt) {
 }
 
 export function examPartLabel(layer) {
-  if ((layer.question_type || 0) >= 41) return "聴解";
-  if ((layer.question_type || 0) >= 31) return "読解";
+  if ((layer.question_type || 0) >= 41) return "听力";
+  if ((layer.question_type || 0) >= 31) return "阅读";
   if ((layer.question_type || 0) >= 21) return "文法";
-  return "文字・語彙";
+  return "文字与词汇";
 }
 
 export function examQuestionCategoryLabel(question) {
   const type = question.question_type || 0;
-  if (type >= 41) return "聴解";
-  if (type >= 31) return "読解";
+  if (type >= 41) return "听力";
+  if (type >= 31) return "阅读";
   if (type >= 21) return "文法";
-  return "文字・語彙";
+  return "文字与词汇";
 }
 
 export function isListeningQuestion(question) {
@@ -219,7 +219,7 @@ export function buildExamProblemSections(exam, questions) {
 }
 
 export function examQuestionDisplayNumber(section, question, sectionIndex, questionIndexById) {
-  if (section?.partLabel === "聴解") return sectionIndex + 1;
+  if (section?.partLabel === "听力") return sectionIndex + 1;
   return (questionIndexById.get(question.id) || 0) + 1;
 }
 

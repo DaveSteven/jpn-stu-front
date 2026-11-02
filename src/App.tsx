@@ -154,7 +154,7 @@ function App() {
         if (!ignore) setVocabulary(entries);
         if (!ignore) setVocabularyStats(stats);
       } catch (err) {
-        if (!ignore) setError(`単語データを読み込めませんでした: ${err.message}`);
+        if (!ignore) setError(`无法加载词汇数据：${err.message}`);
       }
     }
     loadVocabulary();
@@ -344,8 +344,8 @@ function App() {
       book_name: quiz.title,
       level,
       subject: "wrong_review",
-      subjectLabel: "ミス問題",
-      categoryLabel: `${level} ミス問題`,
+      subjectLabel: "错题",
+      categoryLabel: `${level} 错题`,
     };
     startSession(source, quiz, "wrong_review");
   }
@@ -518,12 +518,11 @@ function App() {
     await applySession(session);
   }
 
-  async function register(form) {
-    const session = await api("/api/auth/register", {
+  async function registerUser(form) {
+    return api("/api/auth/register", {
       method: "POST",
       body: JSON.stringify(form),
-    });
-    await applySession(session);
+    }, authToken);
   }
 
   async function logout() {
@@ -622,7 +621,7 @@ function App() {
   if (loading) {
     return (
       <Shell>
-        <div className="center-state">Loading lessons...</div>
+        <div className="center-state">正在加载课程…</div>
       </Shell>
     );
   }
@@ -630,7 +629,7 @@ function App() {
   if (!authToken || !currentUser) {
     return (
       <Shell>
-        <LoginView onLogin={login} onRegister={register} />
+        <LoginView onLogin={login} />
       </Shell>
     );
   }
@@ -776,6 +775,7 @@ function App() {
               attempts={attempts}
               onBack={resetToLibrary}
               onLogout={logout}
+              onRegisterUser={registerUser}
             />
           )}
         />
@@ -848,7 +848,7 @@ function ExamRoute({
   }
 
   if (!examSession || examSession.exam.id !== numericExamId) {
-    return <div className="center-state">Loading exam...</div>;
+    return <div className="center-state">正在加载试卷…</div>;
   }
 
   return (
@@ -894,7 +894,7 @@ function ExamReviewRoute({
     || !examSession.finishedAttempt
     || examSession.reviewAttemptId !== numericAttemptId
   ) {
-    return <div className="center-state">Loading review...</div>;
+    return <div className="center-state">正在加载复习内容…</div>;
   }
 
   return (

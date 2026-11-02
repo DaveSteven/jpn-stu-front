@@ -18,6 +18,7 @@ import {
   Search,
   Target,
   Trophy,
+  UserRoundPlus,
   X,
 } from "lucide-react";
 import {
@@ -93,11 +94,11 @@ export function LibraryView({
     <>
       <header className="topbar">
         <div>
-          <div className="eyebrow">Japanese Study</div>
-          <h1>JLPT トレーニング</h1>
+          <div className="eyebrow">日语学习</div>
+          <h1>JLPT 训练</h1>
         </div>
         <div className="top-actions">
-          <div className="level-switch" role="tablist" aria-label="JLPT level">
+          <div className="level-switch" role="tablist" aria-label="JLPT 等级">
             {LEVELS.map((item) => (
               <button
                 key={item}
@@ -113,7 +114,7 @@ export function LibraryView({
             className="wrong-icon-button"
             onClick={onOpenWrongBook}
             type="button"
-            aria-label="Wrong book"
+            aria-label="错题本"
           >
             <NotebookPen size={23} />
             {wrongItems.length ? (
@@ -124,7 +125,7 @@ export function LibraryView({
             className="avatar-button"
             onClick={onOpenUser}
             type="button"
-            aria-label="User profile"
+            aria-label="用户资料"
           >
             <span>{currentUser?.display_name?.slice(0, 1) || "D"}</span>
           </button>
@@ -134,12 +135,12 @@ export function LibraryView({
       {questionPool ? (
         <section className="home-continue-card">
           <div>
-            <div className="eyebrow">今日のおすすめ</div>
-            <h2>{level} {currentSubjectLabel} ランダム練習</h2>
-            <p>現在のカテゴリから20問。問題と選択肢は毎回シャッフルされます。</p>
+            <div className="eyebrow">今日推荐</div>
+            <h2>{level} {currentSubjectLabel} 随机练习</h2>
+            <p>从当前分类抽取 20 题，每次都会打乱题目和选项。</p>
           </div>
           <button className="primary-button" onClick={onMixedTest} type="button">
-            20問を始める <ArrowRight size={19} />
+            开始 20 题 <ArrowRight size={19} />
           </button>
         </section>
       ) : null}
@@ -170,7 +171,7 @@ export function LibraryView({
         <div className="home-section-heading">
           <div><h2>基础题库</h2><p>选择知识领域后，按课练习</p></div>
         </div>
-        <div className="subject-library-tabs" role="tablist" aria-label="Question subject">
+        <div className="subject-library-tabs" role="tablist" aria-label="题目科目">
           {SUBJECTS.map((item, index) => {
             const Icon = [BrainCircuit, BookOpen, Layers3][index];
             return (
@@ -198,8 +199,8 @@ export function LibraryView({
                   </div>
                   <h2 className="book-display-number">{book.displayName}</h2>
                   <div className="book-meta">
-                    <span>{book.question_count} questions</span>
-                    {stats ? <span>Best {stats.best}%</span> : <span>New</span>}
+                    <span>{book.question_count} 道题</span>
+                    {stats ? <span>最高 {stats.best}%</span> : <span>未练习</span>}
                   </div>
                   <Progress
                     value={stats ? pct(stats.correct, stats.total) : 0}
@@ -209,7 +210,7 @@ export function LibraryView({
                   className="start-button"
                   onClick={() => onStart(book)}
                   type="button"
-                  aria-label={`Start ${book.book_name}`}
+                  aria-label={`开始 ${book.book_name}`}
                 >
                   <ChevronRight size={24} />
                 </button>
@@ -221,7 +222,7 @@ export function LibraryView({
             <strong>
               {level} {currentSubjectLabel}
             </strong>
-            <span>このカテゴリの問題はまだありません。</span>
+            <span>该分类暂时没有题目。</span>
           </div>
         )}
       </section>
@@ -257,20 +258,20 @@ export function ExamListView({
           className="icon-button"
           onClick={onBack}
           type="button"
-          aria-label="Back"
+          aria-label="返回"
         >
           <ArrowLeft size={22} />
         </button>
         <div>
-          <div className="eyebrow">Exam Library</div>
-          <h1>模擬試験</h1>
+          <div className="eyebrow">考试题库</div>
+          <h1>模拟考试</h1>
         </div>
       </header>
 
       <div
         className="level-switch exam-level-switch"
         role="tablist"
-        aria-label="JLPT level"
+        aria-label="JLPT 等级"
       >
         {LEVELS.map((item) => (
           <button
@@ -293,7 +294,7 @@ export function ExamListView({
                 <div>
                   <div className="book-badge subject-reading">{exam.level}</div>
                   <h3>{exam.title}</h3>
-                  {last ? <p>直近 {pct(last.correct, last.total)}%</p> : null}
+                  {last ? <p>最近成绩 {pct(last.correct, last.total)}%</p> : null}
                 </div>
                 <div className="exam-card-actions">
                   {last ? (
@@ -302,14 +303,14 @@ export function ExamListView({
                       onClick={() => onReviewAttempt(last)}
                       type="button"
                     >
-                      解説を見る
+                      查看解析
                     </button>
                   ) : null}
                   <button
                     className="start-button"
                     onClick={() => onStartExam(exam)}
                     type="button"
-                    aria-label={`Start ${exam.title}`}
+                    aria-label={`开始 ${exam.title}`}
                   >
                     <ChevronRight size={24} />
                   </button>
@@ -320,8 +321,8 @@ export function ExamListView({
         </div>
       ) : (
         <div className="empty-books">
-          <strong>{level} 試験ライブラリ</strong>
-          <span>このレベルの試験データはまだありません。</span>
+          <strong>{level} 考试题库</strong>
+          <span>该等级暂时没有考试数据。</span>
         </div>
       )}
     </section>
@@ -331,7 +332,7 @@ export function ExamListView({
 export const PRACTICE_CATEGORIES = {
   vocabulary: {
     label: "文字词汇",
-    eyebrow: "Vocabulary Practice",
+    eyebrow: "文字词汇练习",
     types: [
       { id: 11, label: "汉字读音", description: "选择汉字的正确读音" },
       { id: 12, label: "汉字书写", description: "选择假名对应的正确汉字" },
@@ -343,7 +344,7 @@ export const PRACTICE_CATEGORIES = {
   },
   grammar: {
     label: "文法",
-    eyebrow: "Grammar Practice",
+    eyebrow: "文法练习",
     types: [
       { id: 21, label: "文法填空", description: "选择最适合句中空格的表达" },
       { id: 22, label: "句子排序", description: "判断 ★ 位置应放入的内容" },
@@ -352,7 +353,7 @@ export const PRACTICE_CATEGORIES = {
   },
   reading: {
     label: "读解",
-    eyebrow: "Reading Practice",
+    eyebrow: "阅读练习",
     types: [
       { id: 31, label: "短篇理解", description: "阅读短文并回答问题" },
       { id: 32, label: "中篇理解", description: "理解文章结构和主要内容" },
@@ -396,7 +397,7 @@ export function GrammarPracticeSetupView({ exams, level, category = "grammar", o
   return (
     <section className="grammar-practice-setup">
       <header className="quiz-header">
-        <button className="icon-button" onClick={onBack} type="button" aria-label="Back"><ArrowLeft size={22} /></button>
+        <button className="icon-button" onClick={onBack} type="button" aria-label="返回"><ArrowLeft size={22} /></button>
         <div className="grammar-practice-title"><div className="eyebrow">{practiceCategory.eyebrow}</div><h1>{level} {practiceCategory.label}专项</h1><p>按需要组合题型、来源和练习数量</p></div>
       </header>
 
@@ -432,27 +433,27 @@ export function GrammarPracticeSetupView({ exams, level, category = "grammar", o
 }
 
 const VOCABULARY_POS = {
-  noun: "名詞",
-  verb: "動詞",
-  adverb: "副詞",
+  noun: "名词",
+  verb: "动词",
+  adverb: "副词",
 };
 
 const VOCABULARY_STATUS = {
-  new: "未学習",
-  learning: "学習中",
-  mastered: "習得済み",
+  new: "未学习",
+  learning: "学习中",
+  mastered: "已掌握",
 };
 
 const TRANSITIVITY_LABEL = {
-  transitive: "他動詞",
-  intransitive: "自動詞",
-  both: "自他両用",
+  transitive: "他动词",
+  intransitive: "自动词",
+  both: "自他两用",
 };
 
 const RELATION_LABEL = {
-  synonym: "類義語",
-  antonym: "反義語",
-  related: "関連語",
+  synonym: "近义词",
+  antonym: "反义词",
+  related: "相关词",
 };
 
 export function VocabularyView({ entries, stats, onBack, onReview }) {
@@ -529,33 +530,33 @@ export function VocabularyView({ entries, stats, onBack, onReview }) {
           className="icon-button"
           onClick={onBack}
           type="button"
-          aria-label="Back"
+          aria-label="返回"
         >
           <ArrowLeft size={22} />
         </button>
         <div className="vocabulary-title">
-          <div className="eyebrow">Vocabulary Deck</div>
-          <h1>高頻単語帳</h1>
-          <p>新標日中級上・三円単語</p>
+          <div className="eyebrow">词汇卡片</div>
+          <h1>高频词汇本</h1>
+          <p>新版标准日本语中级上册 · 三星词汇</p>
         </div>
       </header>
 
-      <section className="vocabulary-stats" aria-label="Vocabulary progress">
+      <section className="vocabulary-stats" aria-label="词汇学习进度">
         <div>
           <strong>{stats.total}</strong>
-          <span>単語</span>
+          <span>词汇</span>
         </div>
         <div>
           <strong>{stats.new}</strong>
-          <span>未学習</span>
+          <span>未学习</span>
         </div>
         <div>
           <strong>{stats.learning}</strong>
-          <span>学習中</span>
+          <span>学习中</span>
         </div>
         <div>
           <strong>{stats.mastered}</strong>
-          <span>習得済み</span>
+          <span>已掌握</span>
         </div>
       </section>
 
@@ -565,17 +566,17 @@ export function VocabularyView({ entries, stats, onBack, onReview }) {
           <input
             value={query}
             onChange={(event) => updateFilter(setQuery, event.target.value)}
-            placeholder="単語・読み・中国語で検索"
+            placeholder="按单词、读音或中文搜索"
           />
         </label>
         <select
           value={lesson}
           onChange={(event) => updateFilter(setLesson, event.target.value)}
         >
-          <option value="all">全16課</option>
+          <option value="all">全部 16 课</option>
           {Array.from({ length: 16 }, (_, value) => value + 1).map((value) => (
             <option key={value} value={value}>
-              第{value}課
+              第 {value} 课
             </option>
           ))}
         </select>
@@ -585,19 +586,19 @@ export function VocabularyView({ entries, stats, onBack, onReview }) {
             updateFilter(setPartOfSpeech, event.target.value)
           }
         >
-          <option value="all">全品詞</option>
-          <option value="noun">名詞</option>
-          <option value="verb">動詞</option>
-          <option value="adverb">副詞</option>
+          <option value="all">全部词性</option>
+          <option value="noun">名词</option>
+          <option value="verb">动词</option>
+          <option value="adverb">副词</option>
         </select>
         <select
           value={status}
           onChange={(event) => updateFilter(setStatus, event.target.value)}
         >
-          <option value="all">全進捗</option>
-          <option value="new">未学習</option>
-          <option value="learning">学習中</option>
-          <option value="mastered">習得済み</option>
+          <option value="all">全部进度</option>
+          <option value="new">未学习</option>
+          <option value="learning">学习中</option>
+          <option value="mastered">已掌握</option>
         </select>
       </section>
 
@@ -628,13 +629,13 @@ export function VocabularyView({ entries, stats, onBack, onReview }) {
             {revealed ? (
               <div className="vocabulary-details">
                 <section className="vocabulary-meaning">
-                  <span>意味</span>
+                  <span>释义</span>
                   <strong>{entry.meaning_zh}</strong>
                 </section>
 
                 {Object.entries(groupedRelations).map(([type, items]) => (
                   <section className="vocabulary-detail-section" key={type}>
-                    <h3>{RELATION_LABEL[type] || "関連語"}</h3>
+                    <h3>{RELATION_LABEL[type] || "相关词"}</h3>
                     <div className="vocabulary-tags">
                       {items.map((item, itemIndex) => (
                         <span
@@ -646,7 +647,7 @@ export function VocabularyView({ entries, stats, onBack, onReview }) {
                           key={`${item.term}-${itemIndex}`}
                         >
                           {item.term === "無自然対応"
-                            ? "自然な対応語なし"
+                            ? "没有自然对应词"
                             : item.term}
                           {item.term_reading_katakana ? (
                             <small>{item.term_reading_katakana}</small>
@@ -670,7 +671,7 @@ export function VocabularyView({ entries, stats, onBack, onReview }) {
 
                 {entry.examples?.length ? (
                   <section className="vocabulary-detail-section">
-                    <h3>例文</h3>
+                    <h3>例句</h3>
                     <ul className="vocabulary-examples">
                       {entry.examples.map((item, itemIndex) => {
                         const sentence =
@@ -694,7 +695,7 @@ export function VocabularyView({ entries, stats, onBack, onReview }) {
                 type="button"
                 onClick={() => setRevealed(true)}
               >
-                意味を見る
+                查看释义
               </button>
             )}
           </article>
@@ -705,7 +706,7 @@ export function VocabularyView({ entries, stats, onBack, onReview }) {
               onClick={() => move(-1)}
               type="button"
             >
-              前へ
+              上一个
             </button>
             <span>
               {currentIndex + 1} / {filtered.length}
@@ -718,7 +719,7 @@ export function VocabularyView({ entries, stats, onBack, onReview }) {
                   onClick={() => review(false)}
                   type="button"
                 >
-                  もう一度
+                  再学习一次
                 </button>
                 <button
                   className="review-known"
@@ -726,7 +727,7 @@ export function VocabularyView({ entries, stats, onBack, onReview }) {
                   onClick={() => review(true)}
                   type="button"
                 >
-                  覚えた
+                  已记住
                 </button>
               </div>
             ) : (
@@ -735,15 +736,15 @@ export function VocabularyView({ entries, stats, onBack, onReview }) {
                 onClick={() => move(1)}
                 type="button"
               >
-                次へ
+                下一个
               </button>
             )}
           </div>
         </>
       ) : (
         <div className="empty-books">
-          <strong>該当する単語がありません</strong>
-          <span>検索条件を変えてください。</span>
+          <strong>没有符合条件的词汇</strong>
+          <span>请修改搜索条件。</span>
         </div>
       )}
     </section>
@@ -768,12 +769,12 @@ function WrongBookEntry({ items, onOpen }) {
       <div>
         <div className="section-title compact">
           <X size={22} />
-          <h2>ミス問題ノート</h2>
+          <h2>错题本</h2>
         </div>
         <p>
           {items.length
-            ? `${items.length} questions need review`
-            : "No mistakes in this category yet."}
+            ? `${items.length} 道题需要复习`
+            : "该分类暂无错题。"}
         </p>
       </div>
       <button
@@ -796,14 +797,14 @@ export function WrongBookView({ level, items, onBack, onReview }) {
           className="icon-button"
           onClick={onBack}
           type="button"
-          aria-label="Back"
+          aria-label="返回"
         >
           <ArrowLeft size={22} />
         </button>
         <div className="wrong-page-title">
-          <div className="book-pill subject-kanji">ミス問題ノート</div>
+          <div className="book-pill subject-kanji">错题本</div>
           <p>
-            {level} · {items.length} questions
+            {level} · {items.length} 道题
           </p>
         </div>
       </header>
@@ -811,14 +812,14 @@ export function WrongBookView({ level, items, onBack, onReview }) {
       {items.length ? (
         <section className="wrong-review-card">
           <div>
-            <div className="book-badge subject-kanji">{level} ミス問題</div>
-            <h2>ミス問題復習</h2>
+            <div className="book-badge subject-kanji">{level} 错题</div>
+            <h2>错题复习</h2>
             <p>
-              ミスした問題から最大20問をランダムに出題します。正解すると自動的にノートから外れます。
+              从错题中随机抽取最多 20 题。答对后会自动移出错题本。
             </p>
           </div>
           <button className="primary-button" onClick={onReview} type="button">
-            Review 20
+            复习 20 题
           </button>
         </section>
       ) : null}
@@ -831,7 +832,7 @@ export function WrongBookView({ level, items, onBack, onReview }) {
               <div>
                 <h3>{item.stem}</h3>
                 <p>
-                  Correct: <HtmlInline html={item.answerText} />
+                  正确答案：<HtmlInline html={item.answerText} />
                   {item.lastChosenText ? (
                     <>
                       {" "}
@@ -849,16 +850,14 @@ export function WrongBookView({ level, items, onBack, onReview }) {
           ))}
         </div>
       ) : (
-        <p className="empty-history">No mistakes in this category yet.</p>
+        <p className="empty-history">该分类暂无错题。</p>
       )}
     </section>
   );
 }
 
-export function LoginView({ onLogin, onRegister }) {
-  const [mode, setMode] = useState("login");
+export function LoginView({ onLogin }) {
   const [username, setUsername] = useState("");
-  const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
   const [message, setMessage] = useState("");
 
@@ -866,18 +865,10 @@ export function LoginView({ onLogin, onRegister }) {
     event.preventDefault();
     setMessage("");
     try {
-      if (mode === "login") {
-        await onLogin({ username: username.trim(), password });
-      } else {
-        await onRegister({
-          username: username.trim(),
-          display_name: displayName.trim(),
-          password,
-        });
-      }
+      await onLogin({ username: username.trim(), password });
     } catch (err) {
       setMessage(
-        "ログインに失敗しました。ユーザー名とパスワードを確認してください。",
+        "登录失败，请检查用户名和密码。",
       );
     }
   }
@@ -886,42 +877,11 @@ export function LoginView({ onLogin, onRegister }) {
     <section className="login-page">
       <div className="login-card">
         <div className="login-brand">
-          <div>Japanese Study</div>
-          <p>
-            {mode === "login"
-              ? "Log in to continue"
-              : "Create a new study profile"}
-          </p>
-        </div>
-
-        <div className="auth-tabs">
-          <button
-            className={mode === "login" ? "active" : ""}
-            onClick={() => setMode("login")}
-            type="button"
-          >
-            ログイン
-          </button>
-          <button
-            className={mode === "register" ? "active" : ""}
-            onClick={() => setMode("register")}
-            type="button"
-          >
-            ユーザー追加
-          </button>
+          <div>日语学习</div>
+          <p>登录后继续学习</p>
         </div>
 
         <form className="new-user-form" onSubmit={submit}>
-          {mode === "register" ? (
-            <label>
-              Display name
-              <input
-                value={displayName}
-                onChange={(event) => setDisplayName(event.target.value)}
-                placeholder="例：David"
-              />
-            </label>
-          ) : null}
           <label>
             Username
             <input
@@ -935,7 +895,7 @@ export function LoginView({ onLogin, onRegister }) {
             <input
               value={password}
               onChange={(event) => setPassword(event.target.value)}
-              placeholder="Password"
+              placeholder="请输入密码"
               type="password"
             />
           </label>
@@ -943,13 +903,9 @@ export function LoginView({ onLogin, onRegister }) {
           <button
             className="primary-button"
             type="submit"
-            disabled={
-              !username.trim() ||
-              !password ||
-              (mode === "register" && !displayName.trim())
-            }
+            disabled={!username.trim() || !password}
           >
-            {mode === "login" ? "Login" : "Create and login"}
+            登录
           </button>
         </form>
       </div>
@@ -957,7 +913,36 @@ export function LoginView({ onLogin, onRegister }) {
   );
 }
 
-export function UserView({ currentUser, attempts, onBack, onLogout }) {
+export function UserView({ currentUser, attempts, onBack, onLogout, onRegisterUser }) {
+  const [username, setUsername] = useState("");
+  const [displayName, setDisplayName] = useState("");
+  const [password, setPassword] = useState("");
+  const [registering, setRegistering] = useState(false);
+  const [registerMessage, setRegisterMessage] = useState("");
+  const [registerError, setRegisterError] = useState("");
+
+  async function submitRegistration(event) {
+    event.preventDefault();
+    setRegistering(true);
+    setRegisterMessage("");
+    setRegisterError("");
+    try {
+      const user = await onRegisterUser({
+        username: username.trim(),
+        display_name: displayName.trim(),
+        password,
+      });
+      setRegisterMessage(`用户 ${user.display_name}（@${user.username}）已创建。`);
+      setUsername("");
+      setDisplayName("");
+      setPassword("");
+    } catch (error) {
+      setRegisterError(error.message || "创建用户失败，请稍后重试。");
+    } finally {
+      setRegistering(false);
+    }
+  }
+
   return (
     <section className="user-page">
       <header className="quiz-header">
@@ -965,12 +950,12 @@ export function UserView({ currentUser, attempts, onBack, onLogout }) {
           className="icon-button"
           onClick={onBack}
           type="button"
-          aria-label="Back"
+          aria-label="返回"
         >
           <ArrowLeft size={22} />
         </button>
         <div className="wrong-page-title">
-          <div className="book-pill">Profile</div>
+          <div className="book-pill">个人资料</div>
         </div>
       </header>
 
@@ -984,6 +969,37 @@ export function UserView({ currentUser, attempts, onBack, onLogout }) {
         </div>
       </section>
 
+      {currentUser?.username === "david" ? (
+        <section className="profile-admin-card">
+          <div className="section-title">
+            <UserRoundPlus size={22} />
+            <div>
+              <h2>注册用户</h2>
+              <p>仅 David 管理员可以创建新用户。</p>
+            </div>
+          </div>
+          <form className="new-user-form" onSubmit={submitRegistration}>
+            <label>
+              显示名称
+              <input value={displayName} onChange={(event) => setDisplayName(event.target.value)} placeholder="例如：小明" />
+            </label>
+            <label>
+              用户名
+              <input value={username} onChange={(event) => setUsername(event.target.value)} placeholder="例如：xiaoming" autoCapitalize="none" />
+            </label>
+            <label>
+              初始密码
+              <input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="请输入初始密码" type="password" />
+            </label>
+            {registerError ? <p className="form-error" role="alert">{registerError}</p> : null}
+            {registerMessage ? <p className="form-success" role="status">{registerMessage}</p> : null}
+            <button className="primary-button" type="submit" disabled={registering || !username.trim() || !displayName.trim() || !password}>
+              {registering ? "正在创建…" : "创建用户"}
+            </button>
+          </form>
+        </section>
+      ) : null}
+
       <HistoryPanel attempts={attempts} />
 
       <button
@@ -991,7 +1007,7 @@ export function UserView({ currentUser, attempts, onBack, onLogout }) {
         onClick={onLogout}
         type="button"
       >
-        Logout
+        退出登录
       </button>
     </section>
   );
@@ -1081,7 +1097,7 @@ function BilingualTranscript({
             onClick={() => setShowTranslation((value) => !value)}
             type="button"
           >
-            {showTranslation ? "中文訳を隠す" : "中文訳を表示"}
+            {showTranslation ? "隐藏中文译文" : "显示中文译文"}
           </button>
         </div>
       ) : null}
@@ -1117,7 +1133,7 @@ export function RandomPracticeSessionView({ session, onBack, onChoose, onMove, o
   return (
     <section className="random-practice-view">
       <header className="quiz-header">
-        <button className="icon-button" onClick={onBack} type="button" aria-label="Back"><ArrowLeft size={22} /></button>
+        <button className="icon-button" onClick={onBack} type="button" aria-label="返回"><ArrowLeft size={22} /></button>
         <div className="quiz-progress"><Progress value={pct(session.index + 1, session.questions.length)} /><span>{session.index + 1} / {session.questions.length}</span></div>
       </header>
       <article className="random-practice-question">
@@ -1131,8 +1147,8 @@ export function RandomPracticeSessionView({ session, onBack, onChoose, onMove, o
         </section>
       </article>
       <footer className="exam-nav random-practice-nav">
-        <button className="secondary-button" disabled={session.index === 0} onClick={() => onMove(session.index - 1)} type="button">Previous</button>
-        {isLast ? <button className="primary-button" onClick={onSubmit} type="button">Submit</button> : <button className="primary-button" onClick={() => onMove(session.index + 1)} type="button">Next</button>}
+        <button className="secondary-button" disabled={session.index === 0} onClick={() => onMove(session.index - 1)} type="button">上一题</button>
+        {isLast ? <button className="primary-button" onClick={onSubmit} type="button">提交</button> : <button className="primary-button" onClick={() => onMove(session.index + 1)} type="button">下一题</button>}
       </footer>
     </section>
   );
@@ -1193,7 +1209,7 @@ export function ExamSessionView({
           className="icon-button"
           onClick={onBack}
           type="button"
-          aria-label="Back"
+          aria-label="返回"
         >
           <ArrowLeft size={22} />
         </button>
@@ -1210,10 +1226,10 @@ export function ExamSessionView({
             type="button"
           >
             <ClipboardList size={18} />
-            解答シート
+            答题卡
           </button>
           <button className="primary-button" onClick={onSubmit} type="button">
-            Submit
+            提交
           </button>
         </div>
       </header>
@@ -1229,7 +1245,7 @@ export function ExamSessionView({
               onClick={() => setShowAnswerSheet(false)}
               type="button"
             >
-              Close
+              关闭
             </button>
             <div className="answer-section-list">
               {answerParts.map((part) => (
@@ -1391,7 +1407,7 @@ export function ExamSessionView({
               disabled={!canPrev}
               type="button"
             >
-              Prev
+              上一组
             </button>
             <button
               className="primary-button"
@@ -1399,7 +1415,7 @@ export function ExamSessionView({
               disabled={!canNext}
               type="button"
             >
-              Next
+              下一组
             </button>
           </footer>
         </section>
@@ -1451,7 +1467,7 @@ export function ExamResultView({
         <Trophy size={54} />
         <h1>{score}%</h1>
         <p>
-          {attempt.correct} / {attempt.total} correct · {attempt.title}
+          答对 {attempt.correct} / {attempt.total} · {attempt.title}
         </p>
       </div>
 
@@ -1463,28 +1479,28 @@ export function ExamResultView({
         className={`exam-score-summary ${estimatedScore.passed ? "passed" : "failed"}`}
       >
         <div>
-          <span>概算スコア</span>
+          <span>估算分数</span>
           <strong>{estimatedScore.totalScore} / 180</strong>
           <small>
-            {estimatedScore.passed ? "合格見込み" : "不合格見込み"} · 合格ライン{" "}
+            {estimatedScore.passed ? "预计合格" : "预计不合格"} · 合格线{" "}
             {estimatedScore.overallPassMark}
           </small>
         </div>
         <div>
-          <span>言語知識・読解</span>
+          <span>语言知识与阅读</span>
           <strong>{estimatedScore.languageReadingScore} / 120</strong>
           <small>
             {estimatedScore.languageReadingCorrect}/
-            {estimatedScore.languageReadingTotal} · 目安{" "}
+            {estimatedScore.languageReadingTotal} · 参考线{" "}
             {estimatedScore.languageReadingPassMark}
           </small>
         </div>
         <div>
-          <span>聴解</span>
+          <span>听力</span>
           <strong>{estimatedScore.listeningScore} / 60</strong>
           <small>
             {estimatedScore.listeningCorrect}/{estimatedScore.listeningTotal} ·
-            目安 {estimatedScore.listeningPassMark}
+            参考线 {estimatedScore.listeningPassMark}
           </small>
         </div>
       </section>}
@@ -1492,19 +1508,19 @@ export function ExamResultView({
       <div className="result-actions">
         <button className="primary-button" onClick={onRepeat} type="button">
           <RotateCcw size={20} />
-          {practice ? "重新设置" : "Repeat"}
+          {practice ? "重新设置" : "再做一次"}
         </button>
         <button className="secondary-button" onClick={onLibrary} type="button">
-          {practice ? "返回首页" : "Exam list"}
+          {practice ? "返回首页" : "试卷列表"}
         </button>
       </div>
 
       <div className="result-review-layout">
         <aside
           className="review-jump-panel"
-          aria-label="Review question navigation"
+          aria-label="复习题目导航"
         >
-          <div className="review-jump-title">問題番号</div>
+          <div className="review-jump-title">题号</div>
           {reviewProblemGroups.map((group) => (
             <section className="review-jump-section" key={group.label}>
               <div className="review-jump-group-title">{group.label}</div>
@@ -1751,7 +1767,7 @@ export function QuizView({ session, onBack, onChoose, onCheck, onNext }) {
           className="icon-button"
           onClick={onBack}
           type="button"
-          aria-label="Back"
+          aria-label="返回"
         >
           <ArrowLeft size={22} />
         </button>
@@ -1807,24 +1823,24 @@ export function QuizView({ session, onBack, onChoose, onCheck, onNext }) {
       >
         {session.checked ? (
           <div className="feedback">
-            <strong>{isCorrect ? "Correct!" : "Answer"}</strong>
+            <strong>{isCorrect ? "回答正确！" : "正确答案"}</strong>
             <span>
               <HtmlInline html={session.checkResult.answer_text} />
             </span>
           </div>
         ) : (
           <div className="feedback muted">
-            <strong>Choose one</strong>
+            <strong>请选择一个答案</strong>
             <span>
               {session.mode === "mixed"
-                ? "Mixed test, 20 questions"
-                : "Book practice, 10 questions"}
+                ? "综合测试，共 20 题"
+                : "课程练习，共 10 题"}
             </span>
           </div>
         )}
         {session.checked ? (
           <button className="primary-button" onClick={onNext} type="button">
-            {session.index === session.questions.length - 1 ? "Finish" : "Next"}
+            {session.index === session.questions.length - 1 ? "完成" : "下一题"}
           </button>
         ) : (
           <button
@@ -1833,7 +1849,7 @@ export function QuizView({ session, onBack, onChoose, onCheck, onNext }) {
             onClick={onCheck}
             type="button"
           >
-            Check
+            检查答案
           </button>
         )}
       </footer>
@@ -1849,17 +1865,17 @@ export function ResultView({ attempt, onRepeat, onLibrary }) {
         <Trophy size={54} />
         <h1>{score}%</h1>
         <p>
-          {attempt.correct} / {attempt.total} correct
+          答对 {attempt.correct} / {attempt.total}
         </p>
       </div>
 
       <div className="result-actions">
         <button className="primary-button" onClick={onRepeat} type="button">
           <RotateCcw size={20} />
-          Repeat
+          再做一次
         </button>
         <button className="secondary-button" onClick={onLibrary} type="button">
-          Choose book
+          选择课程
         </button>
       </div>
 
@@ -1909,13 +1925,13 @@ export function ResultView({ attempt, onRepeat, onLibrary }) {
                 </section>
               ) : (
                 <p>
-                  Your answer:{" "}
+                  你的答案：{" "}
                   {answer.chosenText ? (
                     <HtmlInline html={answer.chosenText} />
                   ) : (
                     "-"
                   )}{" "}
-                  / Correct: <HtmlInline html={answer.answerText} />
+                  / 正确答案：<HtmlInline html={answer.answerText} />
                 </p>
               )}
             </div>
@@ -1932,7 +1948,7 @@ function HistoryPanel({ attempts }) {
     <section className="history-panel">
       <div className="section-title">
         <BarChart3 size={22} />
-        <h2>最近の履歴</h2>
+        <h2>最近记录</h2>
       </div>
       {recent.length ? (
         <div className="history-list">
@@ -1946,7 +1962,7 @@ function HistoryPanel({ attempts }) {
           ))}
         </div>
       ) : (
-        <p className="empty-history">まだ履歴はありません。</p>
+        <p className="empty-history">暂无学习记录。</p>
       )}
     </section>
   );

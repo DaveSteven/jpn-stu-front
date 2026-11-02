@@ -1330,6 +1330,25 @@ h1 {
   gap: 16px;
 }
 
+.profile-admin-card {
+  margin-top: 24px;
+}
+
+.profile-admin-card .section-title {
+  align-items: flex-start;
+}
+
+.profile-admin-card .section-title p {
+  margin-top: 4px;
+  color: var(--muted);
+  font-weight: 650;
+}
+
+.form-success {
+  color: #16834a;
+  font-weight: 650;
+}
+
 .profile-avatar {
   display: grid;
   place-items: center;
