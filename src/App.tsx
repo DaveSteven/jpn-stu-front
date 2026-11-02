@@ -62,6 +62,7 @@ function App() {
   const [books, setBooks] = useState([]);
   const [exams, setExams] = useState([]);
   const [examAttempts, setExamAttempts] = useState([]);
+  const [examRuns, setExamRuns] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);
   const [authToken, setAuthToken] = useState(() => localStorage.getItem(SESSION_TOKEN_KEY));
   const [level, setLevel] = useState(DEFAULT_LEVEL);
@@ -80,14 +81,16 @@ function App() {
 
   async function refreshStudyData(nextLevel = level, token = authToken) {
     if (!token) return;
-    const [attemptRows, wrongRows, examAttemptRows] = await Promise.all([
+    const [attemptRows, wrongRows, examAttemptRows, examRunRows] = await Promise.all([
       api("/api/attempts?limit=50", {}, token),
       api(`/api/wrong-questions?level=${nextLevel}`, {}, token),
       api(`/api/exam-attempts?level=${nextLevel}&limit=50`, {}, token),
+      api("/api/exam-runs", {}, token),
     ]);
     setAttempts(attemptRows.map(mapAttempt));
     setWrongItems(wrongRows.map(mapWrong));
     setExamAttempts(examAttemptRows.map(mapExamAttempt));
+    setExamRuns(examRunRows);
   }
 
   useEffect(() => {
@@ -394,6 +397,19 @@ function App() {
     navigate(`/exams/${exam.id}/start`);
   }
 
+  function resumeExam(exam, run) {
+    writeExamCache(currentUser.id, exam.id, { runId: run.id, index: 0, answers: run.answers || {}, updatedAt: new Date().toISOString() });
+    setExamSession(null);
+    navigate(`/exams/${exam.id}`);
+  }
+
+  async function abandonExam(exam, run) {
+    if (!window.confirm(`确定放弃 ${exam.title}？已完成的答案不会生成成绩。`)) return;
+    await api(`/api/exam-runs/${run.id}/abandon`, { method: "POST" }, authToken);
+    clearExamCache(currentUser.id, exam.id);
+    setExamRuns((rows) => rows.filter((item) => item.id !== run.id));
+  }
+
   async function loadExamIntro(examId) {
     const detail = await api(`/api/exams/${Number(examId)}`, {}, authToken);
     setExamSession({ exam: { ...mapExam(detail), layers: detail.layers || [] }, phase: "intro" });
@@ -646,7 +662,8 @@ function App() {
 
   async function submitExam(timedOut = false) {
     if (!examSession?.run) return saveCompletedExam(examSession);
-    if (!timedOut && !window.confirm("提交后将锁定本科答案，不能返回修改。确定提交吗？")) return;
+    const unanswered = examSession.questions.filter((question) => !examSession.answers[question.id]).length;
+    if (!timedOut && !window.confirm(`本科还有 ${unanswered} 题未作答。提交后将锁定答案，不能返回修改。确定提交吗？`)) return;
     await examSaveQueue.current;
     const run = await api(`/api/exam-runs/${examSession.run.id}/section/complete`, { method: "POST" }, authToken);
     if (run.status === "completed") {
@@ -864,9 +881,12 @@ function App() {
               exams={exams}
               level={level}
               examAttempts={examAttempts}
+              examRuns={examRuns}
               onLevel={chooseLevel}
               onBack={resetToLibrary}
               onStartExam={startExam}
+              onResumeExam={resumeExam}
+              onAbandonExam={abandonExam}
               onReviewAttempt={reviewExamAttempt}
             />
           )}

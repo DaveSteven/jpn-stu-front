@@ -244,14 +244,32 @@ export function ExamListView({
   exams,
   level,
   examAttempts,
+  examRuns = [],
   onLevel,
   onBack,
   onStartExam,
+  onResumeExam,
+  onAbandonExam,
   onReviewAttempt,
 }) {
   const examStats = new Map<number, any>(
     examAttempts.map((attempt) => [attempt.examId, attempt]),
   );
+  const activeRuns = new Map<number, any>(examRuns.map((run) => [run.exam_id, run]));
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
+  function remainingLabel(run) {
+    if (run.status === "awaiting_section") return "科间休息中";
+    const value = run.section_expires_at;
+    if (!value) return "进行中";
+    const normalized = /(?:Z|[+-]\d\d:\d\d)$/.test(value) ? value : `${value}Z`;
+    const seconds = Math.max(0, Math.ceil((new Date(normalized).getTime() - now) / 1000));
+    return `剩余 ${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
+  }
 
   return (
     <section className="exam-list-view">
@@ -291,11 +309,13 @@ export function ExamListView({
         <div className="exam-list">
           {exams.map((exam) => {
             const last = examStats.get(exam.id);
+            const activeRun = activeRuns.get(exam.id);
             return (
               <article className="exam-card" key={exam.id}>
                 <div>
                   <div className="book-badge subject-reading">{exam.level}</div>
                   <h3>{exam.title}</h3>
+                  {activeRun ? <p className="exam-run-status">{activeRun.sections[activeRun.current_section]?.label} · {remainingLabel(activeRun)}</p> : null}
                   {last ? <p>最近成绩 {pct(last.correct, last.total)}%</p> : null}
                 </div>
                 <div className="exam-card-actions">
@@ -308,14 +328,14 @@ export function ExamListView({
                       查看解析
                     </button>
                   ) : null}
-                  <button
+                  {activeRun ? <><button className="secondary-button" onClick={() => onAbandonExam(exam, activeRun)} type="button">放弃</button><button className="primary-button" onClick={() => onResumeExam(exam, activeRun)} type="button">继续考试</button></> : <button
                     className="start-button"
                     onClick={() => onStartExam(exam)}
                     type="button"
                     aria-label={`开始 ${exam.title}`}
                   >
                     <ChevronRight size={24} />
-                  </button>
+                  </button>}
                 </div>
               </article>
             );
@@ -351,7 +371,7 @@ export function ExamIntroView({ exam, onBack, onStart, starting = false }) {
           <li>刷新或暂时离开页面不会暂停倒计时。</li>
           <li>科目之间不计时，确认后才开始下一科。</li>
         </ul>
-        <div className="result-actions"><button className="primary-button" onClick={onStart} disabled={starting} type="button">{starting ? "正在准备…" : "确认并开始第一科"}</button><button className="secondary-button" onClick={onBack} type="button">返回试卷列表</button></div>
+        <div className="result-actions"><button className="primary-button" onClick={onStart} disabled={starting} type="button">{starting ? "正在准备…" : "确认并开始第一科"}</button><button className="secondary-button" onClick={() => document.documentElement.requestFullscreen?.()} type="button">全屏考试</button><button className="secondary-button" onClick={onBack} type="button">返回试卷列表</button></div>
       </section>
     </section>
   );
@@ -359,7 +379,16 @@ export function ExamIntroView({ exam, onBack, onStart, starting = false }) {
 
 export function ExamSectionBreakView({ session, onStartNext }) {
   const section = session.run.sections[session.run.current_section];
-  return <section className="exam-intro-view"><div className="exam-intro-card exam-break-card"><div className="book-badge subject-reading">上一科已提交</div><h1>准备开始：{section.label}</h1><p>本部分考试时间为 {section.duration_minutes} 分钟。点击后立即开始计时，之后不能返回上一科。</p><button className="primary-button" onClick={onStartNext} type="button">开始本部分</button></div></section>;
+  function testAudio() {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const context = new AudioContextClass();
+    const oscillator = context.createOscillator();
+    const gain = context.createGain();
+    oscillator.connect(gain); gain.connect(context.destination); gain.gain.value = 0.08; oscillator.frequency.value = 440;
+    oscillator.start(); oscillator.stop(context.currentTime + 0.7); oscillator.onended = () => context.close();
+  }
+  return <section className="exam-intro-view"><div className="exam-intro-card exam-break-card"><div className="book-badge subject-reading">上一科已提交</div><h1>准备开始：{section.label}</h1><p>本部分考试时间为 {section.duration_minutes} 分钟。点击后立即开始计时，之后不能返回上一科。</p>{section.key === "listening" ? <section className="listening-device-check"><Headphones size={28} /><div><strong>听力设备检查</strong><span>请佩戴耳机并确认能听到测试音。</span></div><button className="secondary-button" onClick={testAudio} type="button">播放测试音</button></section> : null}<div className="result-actions"><button className="primary-button" onClick={onStartNext} type="button">开始本部分</button><button className="secondary-button" onClick={() => document.documentElement.requestFullscreen?.()} type="button">进入全屏</button></div></div></section>;
 }
 
 export const PRACTICE_CATEGORIES = {
@@ -1206,8 +1235,10 @@ export function ExamSessionView({
 }) {
   const [showAnswerSheet, setShowAnswerSheet] = useState(false);
   const [remainingSeconds, setRemainingSeconds] = useState(0);
+  const [timerNotice, setTimerNotice] = useState("");
   const [listeningStarted, setListeningStarted] = useState(false);
   const expiredRef = useRef(false);
+  const previousRemainingRef = useRef<number | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const expiresAt = session.run?.section_expires_at;
   useEffect(() => {
@@ -1217,6 +1248,11 @@ export function ExamSessionView({
     const update = () => {
       const remaining = Math.max(0, Math.ceil((new Date(normalized).getTime() - Date.now()) / 1000));
       setRemainingSeconds(remaining);
+      const previous = previousRemainingRef.current;
+      for (const [threshold, message] of [[600, "本科剩余 10 分钟"], [300, "本科剩余 5 分钟"], [60, "本科只剩 1 分钟"]] as const) {
+        if (previous !== null && previous > threshold && remaining <= threshold) setTimerNotice(message);
+      }
+      previousRemainingRef.current = remaining;
       if (remaining === 0 && !expiredRef.current) {
         expiredRef.current = true;
         onSubmit(true);
@@ -1349,6 +1385,7 @@ export function ExamSessionView({
       </header>
 
       <section className={`exam-layout ${showAnswerSheet ? "sheet-open" : ""}`}>
+        {timerNotice ? <div className="exam-time-notice" role="status"><Clock3 size={18} />{timerNotice}<button onClick={() => setTimerNotice("")} type="button"><X size={16} /></button></div> : null}
         {showAnswerSheet ? (
           <aside className="answer-sheet">
             <div className="book-pill subject-reading">
